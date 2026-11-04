@@ -92,7 +92,7 @@ Example: Math, group, 20 USD, Grade 3 (rate 1.2) → **24 USD**. The result is s
 
 - Every enrollment is a one-month plan that renews. There is no per-session billing.
 - A student who joins mid-month pays the full month. The discount can adjust it.
-- A paused enrollment is not charged. An ended enrollment stops charges from the next month.
+- A paused enrollment is not charged. An enrollment ended during a month is billed for that final month and stops from the next month.
 - A student taking two subjects has two enrollments, each with its own price and balance.
 - Charges are created only when the admin presses the button and confirms the review list. One live charge exists per enrollment per month; a voided charge can be re-issued.
 
@@ -131,7 +131,7 @@ Public website, accounts for teachers, parents, or students, online payments, me
 | Database | PostgreSQL on Neon (free), Prisma 6 | Pooled connection at runtime, direct connection for migrations |
 | Authentication | Built in-house in NestJS (no Clerk) | Password, TOTP 2FA, recovery codes, 30-minute idle timeout |
 | Email | Resend | Notifications only, to the admin |
-| Hosting | Vercel (see risk 2.9) | Next.js app and API deployed from the same repo |
+| Hosting | Vercel (see risk 2.7) | Next.js app and API deployed from the same repo |
 | Backup storage | Cloudflare R2 (free tier) | Encrypted daily database dumps |
 | Source control and CI | GitHub, GitHub Actions | Also runs the daily backup job |
 | Repo layout | pnpm workspaces: `apps/web`, `apps/api`, `packages/shared` | Shared types and Zod schemas |

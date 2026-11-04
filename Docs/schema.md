@@ -439,6 +439,8 @@ ALTER TABLE "Enrollment"
     CHECK ("type" <> 'MUSIC' OR "gradeLevelId" IS NULL),
   ADD CONSTRAINT "enrollment_dates_ordered"
     CHECK ("endDate" IS NULL OR "endDate" >= "startDate"),
+  ADD CONSTRAINT "enrollment_ended_has_end_date"
+    CHECK ("status" <> 'ENDED' OR "endDate" IS NOT NULL),
   ADD CONSTRAINT "enrollment_sessions_positive"
     CHECK ("sessionsPerMonth" IS NULL OR "sessionsPerMonth" > 0);
 
@@ -458,7 +460,15 @@ ALTER TABLE "GradeLevel"
     CHECK ("rate" > 0);
 ```
 
-### 4.4 Expense and rate constraints
+### 4.4 Session constraint
+
+```sql
+ALTER TABLE "Session"
+  ADD CONSTRAINT "session_times_ordered"
+    CHECK ("endsAt" > "startsAt");
+```
+
+### 4.5 Expense and rate constraints
 
 ```sql
 ALTER TABLE "Expense"
@@ -472,7 +482,7 @@ ALTER TABLE "ExchangeRate"
     CHECK ("lbpPerUsd" > 0);
 ```
 
-### 4.5 Receipt numbers
+### 4.6 Receipt numbers
 
 ```sql
 -- Global, monotonic, never reused. Assigned inside the payment transaction:
@@ -480,7 +490,7 @@ ALTER TABLE "ExchangeRate"
 CREATE SEQUENCE "receipt_number_seq" AS INTEGER START WITH 1 INCREMENT BY 1;
 ```
 
-### 4.6 Enforced in the service layer
+### 4.7 Enforced in the service layer
 
 Some rules cross tables or depend on the caller's intent, so they cannot be CHECK constraints. They are centralized in `packages/shared` and the NestJS services, and covered by unit tests:
 
@@ -488,8 +498,12 @@ Some rules cross tables or depend on the caller's intent, so they cannot be CHEC
 - A `MUSIC` enrollment requires `sessionsPerMonth`; an `EDUCATION` enrollment leaves it null.
 - A refund may not exceed the enrollment's non-voided payments minus prior refunds, checked inside the same transaction.
 - `Expense.teacherId` is only set for `TEACHER_PAY`.
-- `receiptNumber` is assigned only to `PAYMENT` rows, inside the payment transaction.
-- A charge proposal only includes `ACTIVE` enrollments that started on or before the month end and have no live charge for that month.
+- `receiptNumber` is assigned only to `PAYMENT` rows, inside the payment transaction. Gaps in the sequence are acceptable.
+- A charge proposal for month M includes enrollments where `startDate <= last day of M` and `status <> 'PAUSED'`, and:
+  - `ACTIVE`: always included;
+  - `ENDED`: included only when `endDate >= first day of M` (the final month is billed; the next month is not);
+  - and there is no live charge for M.
+- Ending an enrollment sets `endDate`; the database refuses `ENDED` without one.
 - The session allowance for a music enrollment is copied from the subject at creation, then owned by the enrollment.
 
 ---
@@ -507,6 +521,8 @@ Some rules cross tables or depend on the caller's intent, so they cannot be CHEC
 | Refund cap | Non-voided refunds for an enrollment cannot exceed non-voided payments minus prior refunds. Enforced in a transaction. |
 | Charge amount | `monthlyPrice` minus the enrollment discount (percent, or fixed clamped at 0). Editable per charge in the review list; saved on the `CHARGE` row. |
 | Void | Sets `voidedAt`; balance and revenue exclude the row immediately. Receipt numbers are never reused. |
+| Receipts | Global monotonic sequence; gaps after a rolled-back transaction are acceptable. |
+| Dashboard conversion | USD totals are converted for the LBP view at the rate effective on the period end. If no rate exists on that date, the latest prior rate is used and the UI labels it. |
 | Outstanding | Sum of positive per-enrollment balances as of the period end (charges with `periodMonth` up to the period end, payments/refunds with `date` up to the period end). Credits are reported separately, not netted against other students. |
 
 ---

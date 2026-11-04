@@ -146,7 +146,7 @@ We do not cut authentication, backups, balance correctness, session counting, or
 
 | HL # | Item # | Description | Start | End | Effort (h) | Depends on | Engineer | Deliverable |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| 8 | 8.1 | Charge proposal for a month, edit/skip, transactional confirm, duplicate protection, re-issue after void | 2026-11-16 | 2026-11-17 | 5 | 6.2 | Majd | Monthly charges |
+| 8 | 8.1 | Charge proposal for a month (Active and final-month Ended enrollments), edit/skip, transactional confirm, duplicate protection, re-issue after void | 2026-11-16 | 2026-11-17 | 5 | 6.2 | Majd | Monthly charges |
 | 8 | 8.2 | Payment entry (method, currency, rate, USD value, receipt number) and refund entry with cap | 2026-11-17 | 2026-11-17 | 6 | 9.1, 8.1 | Majd | Payments and refunds |
 | 8 | 8.3 | Balance, void logic, refund cap, unit tests | 2026-11-17 | 2026-11-18 | 5 | 8.2 | Majd | Accurate balances |
 | 8 | 8.4 | Ledger history and balance on the student profile | 2026-11-18 | 2026-11-18 | 4 | 8.3 | Mirna | Balance UI |
