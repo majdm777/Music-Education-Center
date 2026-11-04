@@ -1,0 +1,119 @@
+name: CI
+
+on:
+  push:
+    branches: [main, initial-setup]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    name: Format, lint, types, tests, build
+    runs-on: ubuntu-latest
+    env:
+      # Prisma generate needs the datasource variables present. No database is contacted.
+      DATABASE_URL: postgresql://u:p@localhost:5432/db?schema=public
+      DIRECT_URL: postgresql://u:p@localhost:5432/db?schema=public
+      JWT_SECRET: ci-only-secret-that-is-at-least-32-characters
+      TOTP_ENCRYPTION_KEY: 6SYtapbzpbiVVwVJMv9++vmNsgyy6QER4xel4dYpB2I=
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Format
+        run: pnpm format:check
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Types
+        run: pnpm typecheck
+
+      - name: Tests
+        run: pnpm test
+
+      - name: Build
+        run: pnpm build
+
+  database:
+    name: Apply migration, seed, health check
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: mec
+          POSTGRES_PASSWORD: mec_ci_password
+          POSTGRES_DB: mec
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U mec -d mec"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://mec:mec_ci_password@localhost:5432/mec?schema=public
+      DIRECT_URL: postgresql://mec:mec_ci_password@localhost:5432/mec?schema=public
+      JWT_SECRET: ci-only-secret-that-is-at-least-32-characters
+      TOTP_ENCRYPTION_KEY: 6SYtapbzpbiVVwVJMv9++vmNsgyy6QER4xel4dYpB2I=
+      ADMIN_EMAIL: ci@example.com
+      ADMIN_PASSWORD: ci-only-password-123
+      API_PORT: 3001
+      WEB_ORIGIN: http://localhost:3000
+      NODE_ENV: test
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Apply migrations
+        run: pnpm db:deploy
+
+      - name: Verify SQL appendix
+        run: pnpm db:verify
+
+      - name: Seed
+        run: pnpm db:seed
+
+      - name: Build
+        run: pnpm build
+
+      - name: Start API and check health
+        run: |
+          node apps/api/dist/main.js &
+          for attempt in $(seq 1 30); do
+            if curl -fsS http://localhost:3001/api/health > /tmp/health.json; then
+              cat /tmp/health.json
+              grep -q '"status":"ok"' /tmp/health.json
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "API did not become healthy"
+          exit 1
