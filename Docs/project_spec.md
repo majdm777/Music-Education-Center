@@ -1,9 +1,9 @@
 # Project Spec: Music & Education Center Management System
 
-**Version:** 1.0 (draft for team approval)  **Date:** 4 Nov 2026
+**Version:** 1.0 (v6 decisions integrated, 4 Nov 2026)  **Date:** 4 Nov 2026
 **Client:** Abdullah Maatouk  **Team Lead:** Majd Maatouk
 **Team:** Majd Maatouk, Mirna Derbieh (design and engineering), Ali Othman (DevOps)
-**Related documents:** `PRD_Center_Management_System.md`, `Project_Plan_Center_Management_System.md`, `schema_v5.prisma` (v6 changes listed in section 2.5)
+**Related documents:** `PRD_Center_Management_System.md`, `Project_Plan_Center_Management_System.md`, `schema.md` (v6, including the SQL constraints Prisma cannot express)
 
 This spec says **what we are building and how we are building it**. The PRD holds the requirement list and acceptance criteria. This document explains the purpose, the rules, and the technical design behind them.
 
@@ -94,7 +94,7 @@ Example: Math, group, 20 USD, Grade 3 (rate 1.2) → **24 USD**. The result is s
 - A student who joins mid-month pays the full month. The discount can adjust it.
 - A paused enrollment is not charged. An ended enrollment stops charges from the next month.
 - A student taking two subjects has two enrollments, each with its own price and balance.
-- Charges are created only when the admin presses the button and confirms the review list. The same enrollment cannot be charged twice for one month.
+- Charges are created only when the admin presses the button and confirms the review list. One live charge exists per enrollment per month; a voided charge can be re-issued.
 
 **Music sessions**
 
@@ -109,8 +109,9 @@ Example: Math, group, 20 USD, Grade 3 (rate 1.2) → **24 USD**. The result is s
 - Prices are in USD. Payments and expenses can be in USD or LBP, each saving the exchange rate used and the USD value.
 - **Balance** = charges − payments + refunds, ignoring voided entries. A negative balance is a credit.
 - **Revenue** = payments received − refunds, by payment date. **Profit** = revenue − expenses.
+- Refunds for an enrollment cannot exceed its non-voided payments minus prior refunds. An overpayment credit is still allowed; the cap applies to refunds, not to the resulting balance.
 - Mistakes are voided, never deleted. A refund is a real event on its own date, not a void.
-- Changing the exchange rate never changes past records.
+- Changing the exchange rate never changes past records. The dashboard's LBP view converts USD totals at the rate effective on the period end and labels it; individual records keep their own stored rates.
 
 ## 1.6 Out of Scope (v1)
 
@@ -228,7 +229,9 @@ erDiagram
 
 - **Balance** = sum of non-void charges − non-void payments + non-void refunds, per enrollment and per student.
 - **Remaining music sessions** = monthly allowance − `Session` rows in the Beirut calendar month.
-- **Overdue** = an unpaid balance after its charge month.
+- **Overdue** = an enrollment with a positive balance and at least one non-void charge whose month is before the current Beirut month.
+- **Active student** = not archived and at least one ACTIVE enrollment. **Low sessions** = 1 or fewer remaining in the current month.
+- **Revenue per teacher** is attributed to the enrollment's teacher; the session's teacher records who delivered the lesson and is used only for the calendar and conflict checks.
 - **Revenue and profit** as defined in section 1.5.
 
 ### Key flows
@@ -291,14 +294,16 @@ Everything else runs inside the app.
 - All text uses translation keys. Layout uses logical CSS properties (`ms-`, `me-`, `ps-`, `pe-`). The `dir` attribute follows the language.
 - Numbers, dates, and currency are formatted per language. Receipts are bilingual.
 
-## 2.5 Changes to schema v5 (becoming v6)
+## 2.5 Schema v6 changes (applied)
 
 1. `LedgerType` gains `REFUND`.
 2. `Subject` gains `groupMinutes` and `oneOnOneMinutes` (default lesson lengths).
 3. `Session` gains `repeatGroupId` (optional string).
 4. New `Setting` table (key and value) for open days, hours, and defaults.
 5. `Student` keeps an optional `birthDate`. Entering only an age saves an approximate date.
-6. `AdminUser` stays, with an encrypted TOTP secret and recovery code hashes.
+6. `AdminUser` stays, with an encrypted TOTP secret and recovery code hashes. v6 adds `failedLoginAttempts`, `lockedUntil`, `tokenVersion` and `lastLoginAt` for lockout and session revocation without a separate session table.
+
+All of these are implemented in `schema.md`. That document is the single source of truth for the database, including the partial unique index, CHECK constraints and receipt sequence that Prisma cannot express.
 
 ## 2.6 Risks and Mitigations
 
@@ -330,16 +335,25 @@ Vercel's free Hobby plan is for non-commercial use and allows one team member, s
 | Emails | Notifications only. The Resend account is registered with Abdullah's email until a domain exists |
 | Charges | Created from a review list after pressing a button |
 | Repeating lessons | Weekly until an end date, default end of the month, maximum 3 months. Edit one or all following |
-| Refunds | Separate `REFUND` entries, not voids |
+| Refunds | Separate `REFUND` entries, not voids. Refunds are capped at non-voided payments minus prior refunds per enrollment |
+| Refund receipts | None. Receipts are issued for payments only |
+| Receipt numbering | Global monotonic sequence, assigned inside the payment transaction, never reused |
+| Dashboard currency | USD is the base; the LBP view converts at the rate effective on the period end and labels the rate |
+| Revenue by teacher | Attributed to `Enrollment.teacherId`; the session teacher is used for scheduling only |
+| Group lessons | Slot identity is the tuple (teacher, start, end); group mates do not trigger overlap warnings |
+| Charge uniqueness | Partial unique index over non-voided charges, so a voided charge can be re-issued |
+| Database checks | Partial index, CHECK constraints and the receipt sequence live in the migration SQL (see `schema.md`) |
+| Roles | Mirna Derbieh is Product Manager; Majd Maatouk is Team Lead |
+| Working copy | WSL ext4 (`~/projects/...`), not `/mnt/c`, to avoid the 9p filesystem penalty |
 | Repo | One repo, Next.js and NestJS, pnpm workspaces |
 | Release approval | Pull request with one teammate approval (2 of 3 with the author) |
 | Team Lead | Majd Maatouk |
 
 ## 2.9 Open Items
 
-- Ali: confirm Vercel Hobby deployment for NestJS and for three contributors; confirm Sentry and uptime-monitor free limits; choose the encryption tool and key storage for backups.
+- Ali: day-1 spike to confirm Vercel Hobby deployment for NestJS and for three contributors; confirm Sentry and uptime-monitor free limits; choose the encryption tool and key storage for backups.
 - Mirna: Arabic PDF test (library and font) on day 1; FullCalendar RTL check.
-- Team: default lesson lengths per subject and default open hours (these are data entered in Settings, not code).
-- Product Manager role is still unassigned.
+- Team: default lesson lengths per subject (Subject data) and default open hours (Settings), entered before the client review.
+- Product Manager: Mirna Derbieh (confirmed 4 Nov 2026).
 - Center name, logo, and colors are placeholders until the client provides them.
-- Update `Project_Plan_Center_Management_System.md` for own authentication, the new stack, and the v6 schema changes.
+- Done 4 Nov 2026: `PRD_Center_Management_System.md`, `Project_Plan_Center_Management_System.md` and `schema.md` updated for own authentication, the new stack and the v6 schema changes.
