@@ -23,6 +23,7 @@
     "db:deploy": "node scripts/with-env.mjs pnpm --filter @mec/api exec prisma migrate deploy",
     "db:seed": "pnpm db:generate && node scripts/with-env.mjs tsx apps/api/prisma/seed.ts",
     "db:verify": "pnpm db:generate && node scripts/with-env.mjs tsx apps/api/prisma/verify.ts",
+    "db:drift": "node scripts/db-drift.mjs",
     "db:reset": "node scripts/with-env.mjs pnpm --filter @mec/api exec prisma migrate reset --force && node scripts/with-env.mjs pnpm db:seed",
     "db:studio": "node scripts/with-env.mjs pnpm --filter @mec/api exec prisma studio"
   },

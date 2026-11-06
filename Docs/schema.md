@@ -138,8 +138,8 @@ model Student {
   school      String?
   notes       String?
   isArchived  Boolean   @default(false)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  createdAt   DateTime @db.Timestamptz(3)  @default(now())
+  updatedAt   DateTime @db.Timestamptz(3)  @updatedAt
 
   enrollments Enrollment[]
 
@@ -154,8 +154,8 @@ model Teacher {
   phone     String?
   payNotes  String?  // agreed pay terms, free text
   isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime @db.Timestamptz(3) @default(now())
+  updatedAt DateTime @db.Timestamptz(3) @updatedAt
 
   enrollments Enrollment[]
   sessions    Session[]
@@ -178,11 +178,12 @@ model Subject {
   groupMinutes    Int?        // default lesson length, GROUP; null -> Setting default
   oneOnOneMinutes Int?        // default lesson length, ONE_ON_ONE
   isActive        Boolean     @default(true)
-  createdAt       DateTime    @default(now())
-  updatedAt       DateTime    @updatedAt
+  createdAt       DateTime @db.Timestamptz(3)    @default(now())
+  updatedAt       DateTime @db.Timestamptz(3)    @updatedAt
 
   enrollments Enrollment[]
 
+  @@unique([id, type]) // supports the composite FK from Enrollment
   @@unique([name, type])
   @@index([type, isActive])
 }
@@ -194,8 +195,8 @@ model GradeLevel {
   rate      Decimal  @db.Decimal(6, 3)
   sortOrder Int      @default(0)
   isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime @db.Timestamptz(3) @default(now())
+  updatedAt DateTime @db.Timestamptz(3) @updatedAt
 
   enrollments Enrollment[]
 }
@@ -223,11 +224,12 @@ model Enrollment {
   discountValue    Decimal? @db.Decimal(12, 2)
 
   notes     String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime @db.Timestamptz(3) @default(now())
+  updatedAt DateTime @db.Timestamptz(3) @updatedAt
 
   student    Student     @relation(fields: [studentId], references: [id])
-  subject    Subject     @relation(fields: [subjectId], references: [id])
+  // Composite FK: Enrollment.type must equal Subject.type.
+  subject    Subject     @relation(fields: [subjectId, type], references: [id, type], onDelete: Restrict)
   gradeLevel GradeLevel? @relation(fields: [gradeLevelId], references: [id])
   teacher    Teacher     @relation(fields: [teacherId], references: [id])
 
@@ -252,17 +254,17 @@ model Session {
   id            String   @id @default(cuid())
   enrollmentId  String
   teacherId     String
-  startsAt      DateTime
-  endsAt        DateTime
+  startsAt      DateTime @db.Timestamptz(3)
+  endsAt        DateTime @db.Timestamptz(3)
   note          String?
   repeatGroupId String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  createdAt     DateTime @db.Timestamptz(3) @default(now())
+  updatedAt     DateTime @db.Timestamptz(3) @updatedAt
 
   enrollment Enrollment @relation(fields: [enrollmentId], references: [id])
   teacher    Teacher    @relation(fields: [teacherId], references: [id])
 
-  @@index([enrollmentId, startsAt])
+  @@unique([enrollmentId, startsAt]) // one student cannot be in two places at once
   @@index([teacherId, startsAt])
   @@index([startsAt])
   @@index([repeatGroupId, startsAt])
@@ -294,9 +296,9 @@ model LedgerEntry {
   method        PaymentMethod?
   receiptNumber Int?           @unique // assigned by the app; payments only
 
-  voidedAt  DateTime?
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  voidedAt  DateTime? @db.Timestamptz(3)
+  createdAt DateTime @db.Timestamptz(3)  @default(now())
+  updatedAt DateTime @db.Timestamptz(3)  @updatedAt
 
   enrollment Enrollment @relation(fields: [enrollmentId], references: [id])
 
@@ -322,11 +324,11 @@ model Expense {
   lbpPerUsd Decimal  @db.Decimal(18, 2)
   amountUsd Decimal  @db.Decimal(14, 2)
 
-  voidedAt  DateTime?
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  voidedAt  DateTime? @db.Timestamptz(3)
+  createdAt DateTime @db.Timestamptz(3)  @default(now())
+  updatedAt DateTime @db.Timestamptz(3)  @updatedAt
 
-  teacher Teacher? @relation(fields: [teacherId], references: [id])
+  teacher Teacher? @relation(fields: [teacherId], references: [id], onDelete: Restrict)
 
   @@index([date])
   @@index([category, date])
@@ -339,8 +341,8 @@ model ExchangeRate {
   id            String   @id @default(cuid())
   lbpPerUsd     Decimal  @db.Decimal(18, 2)
   effectiveDate DateTime @db.Date @unique
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  createdAt     DateTime @db.Timestamptz(3) @default(now())
+  updatedAt     DateTime @db.Timestamptz(3) @updatedAt
 }
 
 // ---------------- Configuration ----------------
@@ -350,29 +352,29 @@ model ExchangeRate {
 model Setting {
   key       String   @id
   value     Json
-  updatedAt DateTime @updatedAt
+  updatedAt DateTime @db.Timestamptz(3) @updatedAt
 }
 
 // ---------------- Login ----------------
 
 model AdminUser {
   id                  String    @id @default(cuid())
-  email               String    @unique
+  email               String    @unique @db.Citext // case-insensitive login identity
   name                String
   passwordHash        String
   language            Language  @default(EN)
   totpSecretEncrypted String?
   twoFactorEnabled    Boolean   @default(false)
-  recoveryCodeHashes  String[]
+  recoveryCodeHashes  String[]  @default([])
 
   // Lockout and session revocation without an extra session table.
   failedLoginAttempts Int       @default(0)
-  lockedUntil         DateTime?
+  lockedUntil         DateTime? @db.Timestamptz(3)
   tokenVersion        Int       @default(0)
-  lastLoginAt         DateTime?
+  lastLoginAt         DateTime? @db.Timestamptz(3)
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime @db.Timestamptz(3) @default(now())
+  updatedAt DateTime @db.Timestamptz(3) @updatedAt
 }
 ```
 
@@ -380,31 +382,71 @@ model AdminUser {
 
 ## 4. SQL appendix
 
-Prisma cannot express partial indexes or `CHECK` constraints. Add the following to the initial migration after `prisma migrate dev --create-only` generates the tables, then apply it. Keep this file and the migration in sync.
+Prisma cannot express partial unique indexes or `CHECK` constraints. Composite keys, `citext`, and `timestamptz` are also written explicitly so the database shape is unambiguous. The SQL lives in two migrations:
 
-### 4.1 One live charge per enrollment per month
+- `migrations/20261104000000_init` — tables, base indexes, base checks, the charge index, and the receipt sequence.
+- `migrations/20261106000000_harden_constraints` — `citext`, `timestamptz`, the composite subject FK, stricter unique indexes, and the remaining checks.
+
+`pnpm db:verify` checks the names and key definitions. `pnpm db:drift` compares the live database with `prisma/schema.prisma`.
+
+### 4.1 Unique rules
 
 ```sql
--- Replaces the old @@unique([enrollmentId, type, periodMonth]).
--- Voided rows are ignored, so a corrected charge can be created.
+-- One live charge per enrollment per month. Voided rows are ignored so a
+-- corrected charge can be created.
 CREATE UNIQUE INDEX "ledger_one_charge_per_month"
   ON "LedgerEntry" ("enrollmentId", "periodMonth")
   WHERE "type" = 'CHARGE' AND "voidedAt" IS NULL;
+
+-- One live enrollment per student, subject, and format.
+CREATE UNIQUE INDEX "enrollment_one_active_per_subject_format"
+  ON "Enrollment" ("studentId", "subjectId", "format")
+  WHERE "status" = 'ACTIVE';
+
+-- A student cannot have two sessions at the same instant.
+CREATE UNIQUE INDEX "Session_enrollmentId_startsAt_key"
+  ON "Session" ("enrollmentId", "startsAt");
+
+-- Target for the Enrollment -> Subject composite foreign key.
+CREATE UNIQUE INDEX "Subject_id_type_key" ON "Subject" ("id", "type");
 ```
 
-### 4.2 Ledger constraints
+### 4.2 Composite and foreign keys
+
+```sql
+ALTER TABLE "Enrollment"
+  ADD CONSTRAINT "Enrollment_subjectId_type_fkey"
+    FOREIGN KEY ("subjectId", "type") REFERENCES "Subject" ("id", "type")
+    ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- Financial history must not lose its teacher when a teacher row is deleted.
+ALTER TABLE "Expense"
+  ADD CONSTRAINT "Expense_teacherId_fkey"
+    FOREIGN KEY ("teacherId") REFERENCES "Teacher" ("id")
+    ON DELETE RESTRICT ON UPDATE CASCADE;
+```
+
+### 4.3 Ledger constraints
 
 ```sql
 ALTER TABLE "LedgerEntry"
-  ADD CONSTRAINT "ledger_amount_usd_nonnegative"
-    CHECK ("amountUsd" >= 0),
+  ADD CONSTRAINT "ledger_amount_usd_positive"
+    CHECK ("amountUsd" > 0),
+  ADD CONSTRAINT "ledger_amount_positive"
+    CHECK ("amount" IS NULL OR "amount" > 0),
   ADD CONSTRAINT "ledger_charge_requires_period"
     CHECK ("type" <> 'CHARGE' OR "periodMonth" IS NOT NULL),
   ADD CONSTRAINT "ledger_period_only_for_charge"
     CHECK ("type" = 'CHARGE' OR "periodMonth" IS NULL),
+  ADD CONSTRAINT "ledger_period_first_day"
+    CHECK ("periodMonth" IS NULL OR EXTRACT(DAY FROM "periodMonth") = 1),
   ADD CONSTRAINT "ledger_payment_requires_receipt"
     CHECK ("type" <> 'PAYMENT' OR "receiptNumber" IS NOT NULL),
-  ADD CONSTRAINT "ledger_cash_fields"
+  ADD CONSTRAINT "ledger_receipt_only_for_payment"
+    CHECK ("type" = 'PAYMENT' OR "receiptNumber" IS NULL),
+  ADD CONSTRAINT "ledger_receipt_positive"
+    CHECK ("receiptNumber" IS NULL OR "receiptNumber" > 0),
+  ADD CONSTRAINT "ledger_cash_fields_required"
     CHECK (
       "type" NOT IN ('PAYMENT', 'REFUND') OR (
         "amount" IS NOT NULL AND
@@ -413,11 +455,26 @@ ALTER TABLE "LedgerEntry"
         "method" IS NOT NULL
       )
     ),
+  ADD CONSTRAINT "ledger_cash_fields_only"
+    CHECK (
+      "type" IN ('PAYMENT', 'REFUND') OR (
+        "amount" IS NULL AND
+        "currency" IS NULL AND
+        "lbpPerUsd" IS NULL AND
+        "method" IS NULL
+      )
+    ),
+  ADD CONSTRAINT "ledger_currency_consistent"
+    CHECK (
+      "type" NOT IN ('PAYMENT', 'REFUND') OR
+      ("currency" = 'USD' AND "amount" = "amountUsd") OR
+      ("currency" = 'LBP' AND "amountUsd" = round("amount" / "lbpPerUsd", 2))
+    ),
   ADD CONSTRAINT "ledger_rate_positive"
     CHECK ("lbpPerUsd" IS NULL OR "lbpPerUsd" > 0);
 ```
 
-### 4.3 Enrollment and price constraints
+### 4.4 Enrollment and price constraints
 
 ```sql
 ALTER TABLE "Enrollment"
@@ -437,6 +494,8 @@ ALTER TABLE "Enrollment"
     CHECK ("type" <> 'EDUCATION' OR "gradeLevelId" IS NOT NULL),
   ADD CONSTRAINT "enrollment_music_has_no_grade"
     CHECK ("type" <> 'MUSIC' OR "gradeLevelId" IS NULL),
+  ADD CONSTRAINT "enrollment_music_sessions_only"
+    CHECK ("type" = 'MUSIC' OR "sessionsPerMonth" IS NULL),
   ADD CONSTRAINT "enrollment_dates_ordered"
     CHECK ("endDate" IS NULL OR "endDate" >= "startDate"),
   ADD CONSTRAINT "enrollment_ended_has_end_date"
@@ -447,8 +506,12 @@ ALTER TABLE "Enrollment"
 ALTER TABLE "Subject"
   ADD CONSTRAINT "subject_prices_nonnegative"
     CHECK ("groupPrice" >= 0 AND "oneOnOnePrice" >= 0),
+  ADD CONSTRAINT "subject_one_on_one_at_least_group"
+    CHECK ("oneOnOnePrice" >= "groupPrice"),
   ADD CONSTRAINT "subject_sessions_positive"
     CHECK ("monthlySessions" IS NULL OR "monthlySessions" > 0),
+  ADD CONSTRAINT "subject_music_sessions_only"
+    CHECK ("type" = 'MUSIC' OR "monthlySessions" IS NULL),
   ADD CONSTRAINT "subject_minutes_positive"
     CHECK (
       ("groupMinutes" IS NULL OR "groupMinutes" > 0) AND
@@ -460,7 +523,7 @@ ALTER TABLE "GradeLevel"
     CHECK ("rate" > 0);
 ```
 
-### 4.4 Session constraint
+### 4.5 Session constraint
 
 ```sql
 ALTER TABLE "Session"
@@ -468,21 +531,50 @@ ALTER TABLE "Session"
     CHECK ("endsAt" > "startsAt");
 ```
 
-### 4.5 Expense and rate constraints
+### 4.6 Expense and rate constraints
 
 ```sql
 ALTER TABLE "Expense"
   ADD CONSTRAINT "expense_amounts_nonnegative"
     CHECK ("amount" >= 0 AND "amountUsd" >= 0),
   ADD CONSTRAINT "expense_rate_positive"
-    CHECK ("lbpPerUsd" > 0);
+    CHECK ("lbpPerUsd" > 0),
+  ADD CONSTRAINT "expense_currency_consistent"
+    CHECK (
+      ("currency" = 'USD' AND "amount" = "amountUsd") OR
+      ("currency" = 'LBP' AND "amountUsd" = round("amount" / "lbpPerUsd", 2))
+    ),
+  ADD CONSTRAINT "expense_teacher_matches_category"
+    CHECK (("category" = 'TEACHER_PAY') = ("teacherId" IS NOT NULL));
 
 ALTER TABLE "ExchangeRate"
   ADD CONSTRAINT "exchange_rate_positive"
     CHECK ("lbpPerUsd" > 0);
 ```
 
-### 4.6 Receipt numbers
+### 4.7 Identity constraints
+
+```sql
+ALTER TABLE "Student"
+  ADD CONSTRAINT "student_full_name_nonblank" CHECK (btrim("fullName") <> '');
+ALTER TABLE "Teacher"
+  ADD CONSTRAINT "teacher_full_name_nonblank" CHECK (btrim("fullName") <> '');
+ALTER TABLE "Subject"
+  ADD CONSTRAINT "subject_name_nonblank" CHECK (btrim("name") <> '');
+ALTER TABLE "GradeLevel"
+  ADD CONSTRAINT "grade_name_nonblank" CHECK (btrim("name") <> '');
+ALTER TABLE "Setting"
+  ADD CONSTRAINT "setting_key_nonblank" CHECK (btrim("key") <> '');
+ALTER TABLE "Expense"
+  ADD CONSTRAINT "expense_description_nonblank" CHECK (btrim("description") <> '');
+ALTER TABLE "AdminUser"
+  ADD CONSTRAINT "admin_email_nonblank" CHECK (btrim("email"::text) <> ''),
+  ADD CONSTRAINT "admin_name_nonblank" CHECK (btrim("name") <> ''),
+  ADD CONSTRAINT "admin_2fa_requires_secret"
+    CHECK (NOT "twoFactorEnabled" OR "totpSecretEncrypted" IS NOT NULL);
+```
+
+### 4.8 Receipt numbers
 
 ```sql
 -- Global, monotonic, never reused. Assigned inside the payment transaction:
@@ -490,20 +582,16 @@ ALTER TABLE "ExchangeRate"
 CREATE SEQUENCE "receipt_number_seq" AS INTEGER START WITH 1 INCREMENT BY 1;
 ```
 
-### 4.7 Enforced in the service layer
+### 4.9 Enforced in the service layer
 
-Some rules cross tables or depend on the caller's intent, so they cannot be CHECK constraints. They are centralized in `packages/shared` and the NestJS services, and covered by unit tests:
+Some rules cross tables or depend on the caller's intent, so they cannot be CHECK constraints. They are centralized in `packages/shared` and the NestJS services, and covered by tests:
 
-- `Enrollment.type` must equal `Subject.type`.
-- A `MUSIC` enrollment requires `sessionsPerMonth`; an `EDUCATION` enrollment leaves it null.
+- A `MUSIC` enrollment requires `sessionsPerMonth`; an `EDUCATION` enrollment leaves it null. The database already rejects the opposite.
 - A refund may not exceed the enrollment's non-voided payments minus prior refunds, checked inside the same transaction.
-- `Expense.teacherId` is only set for `TEACHER_PAY`.
-- `receiptNumber` is assigned only to `PAYMENT` rows, inside the payment transaction. Gaps in the sequence are acceptable.
 - A charge proposal for month M includes enrollments where `startDate <= last day of M` and `status <> 'PAUSED'`, and:
   - `ACTIVE`: always included;
   - `ENDED`: included only when `endDate >= first day of M` (the final month is billed; the next month is not);
   - and there is no live charge for M.
-- Ending an enrollment sets `endDate`; the database refuses `ENDED` without one.
 - The session allowance for a music enrollment is copied from the subject at creation, then owned by the enrollment.
 
 ---

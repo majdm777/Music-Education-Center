@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main, initial-setup]
+    branches: [main, initial-setup, foundation-hardening]
   pull_request:
     branches: [main]
 
@@ -97,6 +97,9 @@ jobs:
 
       - name: Verify SQL appendix
         run: pnpm db:verify
+
+      - name: Check schema drift
+        run: pnpm db:drift
 
       - name: Seed
         run: pnpm db:seed
