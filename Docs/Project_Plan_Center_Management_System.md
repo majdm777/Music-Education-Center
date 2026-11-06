@@ -6,7 +6,7 @@ This document is for the team. It covers what we build, in what order, who owns 
 
 **Client:** Abdullah Maatouk
 **Team:** Majd Maatouk (Team Lead, design and engineering), Mirna Derbieh (Product Manager, design and engineering), Ali Othman (DevOps)
-**Stack:** TypeScript, Next.js (App Router), NestJS, Prisma 6, PostgreSQL on Neon, pnpm workspaces
+**Stack:** TypeScript, Next.js (App Router), NestJS, Prisma 6, PostgreSQL 17 (Docker locally; Neon planned for staging/production), pnpm workspaces
 **Target:** 9 Nov to 20 Nov 2026 (10 working days). **Buffer:** 23 Nov to 25 Nov 2026.
 **Environment setup:** 4 Nov to 8 Nov 2026, before kickoff.
 **Sign-off:** client and team lead.
@@ -80,9 +80,9 @@ We do not cut authentication, backups, balance correctness, session counting, or
 | HL # | Item # | Description | Start | End | Effort (h) | Depends on | Engineer | Deliverable |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | 1 | 1.1 | Move repo to WSL ext4, repo hygiene, pnpm workspace, Node/pnpm pins, lint/format, env validation | 2026-11-04 | 2026-11-04 | 3 | N/A | Majd | Reproducible workspace |
-| 1 | 1.2 | Prisma v6 schema, initial migration with partial index/CHECKs/sequence, seed (admin, grades, subjects, settings) | 2026-11-05 | 2026-11-06 | 4 | 1.1 | Majd | Migrated, seeded Docker database |
+| 1 | 1.2 | Prisma v6 schema, migrations with partial indexes/CHECKs/composite FK/sequence, seed (admin, grades, subjects, settings), constraint integration tests | 2026-11-05 | 2026-11-06 | 4 | 1.1 | Majd | Hardened, migrated, seeded Docker database |
 | 1 | 1.3 | Design tokens (placeholder brand), base components, form patterns, Arabic font | 2026-11-05 | 2026-11-08 | 5 | 1.1 | Mirna | Base UI kit |
-| 1 | 1.4 | Local/CI env docs, `.env.example`, health check, web-to-API rewrite verified | 2026-11-07 | 2026-11-08 | 2 | 1.1 | Majd | Fresh-clone setup works |
+| 1 | 1.4 | Local/CI env docs, `.env.example`, health check, web-to-API rewrite verified, drift and audit checks | 2026-11-07 | 2026-11-08 | 2 | 1.1 | Majd | Fresh-clone setup works |
 
 ### 2. DevOps and deployment (44h, 9-20 Nov)
 

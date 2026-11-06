@@ -1,7 +1,7 @@
 # Database Schema (Prisma v6)
 
 Music & Education Center Management System. PostgreSQL, Prisma 6.
-**11 tables.** Version 6, 4 Nov 2026. This document is the database source of truth; the Prisma file under `apps/api/prisma/` is generated from it.
+**11 tables.** Version 6, 4 Nov 2026. This document is the database source of truth; `apps/api/prisma/schema.prisma` mirrors it.
 
 ---
 
@@ -17,6 +17,9 @@ These rules are enforced by the application and, where PostgreSQL allows it, by 
 6. **All stored money amounts are positive.** Direction comes from `LedgerEntry.type`; the balance formula applies the sign.
 7. **One live charge per enrollment per month.** Enforced by a partial unique index that ignores voided rows, so a voided charge can be re-issued.
 8. **Calendar dates are Beirut dates.** Timestamps are stored in UTC; month windows, "today" and display are computed in `Asia/Beirut`.
+9. **An enrollment's type matches its subject.** A composite foreign key on `(subjectId, type)` makes a MUSIC enrollment on an EDUCATION subject impossible, and vice versa.
+10. **One live slot per student.** Only one `ACTIVE` enrollment may exist per `(studentId, subjectId, format)`, and a student may have only one `Session` at a given instant.
+11. **Cash fields have one meaning.** `amount`, `currency`, `lbpPerUsd` and `method` exist only on payments and refunds; only payments carry a receipt number.
 
 ---
 
@@ -685,6 +688,7 @@ There is no production data yet, so v6 is created as the **initial** migration r
 8. `updatedAt` is added to all mutable models.
 9. Currency and amount fields are documented as payment **and refund** fields.
 10. Cash and period `CHECK` constraints, and the receipt sequence, are added in SQL.
+11. The hardening migration (`20261106000000_harden_constraints`) adds `citext` email, `timestamptz` instants, the composite subject FK, one-active-enrollment and session-slot uniqueness, stricter financial coherence checks, and RESTRICT on teacher deletion.
 
 ---
 

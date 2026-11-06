@@ -6,7 +6,7 @@ The center is launching with no historical records, so this system is the single
 
 ## Status
 
-Environment scaffold is in place (4-8 Nov 2026): pnpm workspace, Next.js web app, NestJS API, PostgreSQL 17, Prisma v6 with the SQL constraints Prisma cannot express, idempotent seed, health check, and CI.
+Environment scaffold is in place (4-8 Nov 2026): pnpm workspace, Next.js web app, NestJS API, PostgreSQL 17, a hardened Prisma v6 schema with the SQL constraints Prisma cannot express, idempotent seed, health check, integration tests for every database invariant, and CI with drift and dependency checks.
 
 - **Kickoff:** 9 Nov 2026
 - **Feature complete:** 20 Nov 2026 (at risk, see the plan)
@@ -14,7 +14,7 @@ Environment scaffold is in place (4-8 Nov 2026): pnpm workspace, Next.js web app
 
 ## Stack
 
-TypeScript · Next.js (App Router) · NestJS · Prisma 6 · PostgreSQL (Docker locally, Neon for staging and production) · pnpm workspaces · next-intl, Tailwind CSS, shadcn/ui (design phase) · Vitest · Playwright (planned)
+TypeScript · Next.js (App Router) · NestJS · Prisma 6 · PostgreSQL 17 (Docker locally; Neon planned for staging and production) · pnpm workspaces · next-intl, Tailwind CSS, shadcn/ui (design phase) · Vitest · Playwright (planned)
 
 ## Prerequisites
 
@@ -33,8 +33,9 @@ cp .env.example .env
 
 pnpm install
 pnpm db:up          # starts PostgreSQL and waits for it to be healthy
-pnpm db:deploy      # applies the committed migration (includes the SQL appendix)
-pnpm db:verify      # asserts the partial index, CHECKs and sequence exist
+pnpm db:deploy      # applies the committed migrations
+pnpm db:verify      # asserts the indexes, CHECKs, foreign keys and sequence exist
+pnpm db:drift       # asserts the database matches prisma/schema.prisma
 pnpm db:seed        # idempotent: admin, grades, subjects, settings
 pnpm dev            # web on :3000, API on :3001
 ```
@@ -55,14 +56,16 @@ The seed creates the admin only if it is missing. Re-running it never resets the
 | `pnpm build`                        | Builds shared, generates Prisma Client, builds API and web |
 | `pnpm lint`                         | ESLint over the workspace                                  |
 | `pnpm typecheck`                    | Generates Prisma Client, then type-checks every package    |
-| `pnpm test`                         | Vitest                                                     |
+| `pnpm test`                         | Unit tests (shared; API tests run here once they exist)    |
+| `pnpm test:integration`             | Resets `mec_test` and runs the API database tests          |
 | `pnpm format` / `pnpm format:check` | Prettier                                                   |
 | `pnpm db:up` / `pnpm db:down`       | Local PostgreSQL lifecycle                                 |
 | `pnpm db:migrate`                   | Create and apply a migration while changing the schema     |
 | `pnpm db:deploy`                    | Apply committed migrations (first run, staging, prod, CI)  |
 | `pnpm db:seed`                      | Seed local data                                            |
 | `pnpm db:reset`                     | Drop and recreate the local database, then seed            |
-| `pnpm db:verify`                    | Assert the SQL appendix is present                         |
+| `pnpm db:verify`                    | Assert the indexes, CHECKs, foreign keys and sequence      |
+| `pnpm db:drift`                     | Compare the live database with `prisma/schema.prisma`      |
 | `pnpm db:studio`                    | Prisma Studio                                              |
 
 ## Layout
@@ -84,11 +87,19 @@ Docs/         Product, plan, architecture and schema documents
 ## Database
 
 - Schema v6, 11 tables. `Docs/schema.md` is the source of truth; `apps/api/prisma/schema.prisma` mirrors it.
-- The initial migration is hand-finished: Prisma generates the tables, then the SQL appendix adds the partial unique index for live monthly charges, the `CHECK` constraints, and the receipt sequence.
-- `pnpm db:verify` fails if any of those objects disappear.
+- Two migrations are committed: the initial tables and base checks, then the hardening migration (`citext`, `timestamptz`, composite subject FK, unique active enrollment and session slots, stricter financial checks).
+- `pnpm db:verify` fails if a required index, CHECK, foreign key, date/timestamp type, or the receipt sequence disappears.
+- `pnpm db:drift` fails when the live database or the applied migrations drift from `prisma/schema.prisma`.
 - Balance, revenue, profit and remaining sessions are computed from rows, never stored.
 - Money is `Decimal` end to end; rounding is HALF_UP to two decimals.
-- Timestamps are UTC; month windows and "today" are `Asia/Beirut`.
+- Timestamps are `timestamptz` in UTC; calendar dates stay `date`; month windows and "today" are `Asia/Beirut`.
+
+## Testing
+
+- `pnpm test` runs the unit tests.
+- `pnpm test:integration` creates or resets a separate `mec_test` database, applies the migrations, and checks every database invariant: CHECKs, partial unique indexes, the composite subject FK, `citext`, RESTRICT deletes, and financial consistency.
+- The integration runner refuses any database whose name does not end in `_test`, so it cannot wipe development or production data.
+- `TEST_DATABASE_URL` is optional locally; when omitted, it is derived from `DATABASE_URL` by appending `_test`.
 
 ## Conventions
 
