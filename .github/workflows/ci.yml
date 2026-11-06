@@ -20,6 +20,7 @@ jobs:
       DIRECT_URL: postgresql://u:p@localhost:5432/db?schema=public
       JWT_SECRET: ci-only-secret-that-is-at-least-32-characters
       TOTP_ENCRYPTION_KEY: 6SYtapbzpbiVVwVJMv9++vmNsgyy6QER4xel4dYpB2I=
+      API_URL: http://localhost:3001
     steps:
       - uses: actions/checkout@v4
 
@@ -75,6 +76,7 @@ jobs:
       ADMIN_EMAIL: ci@example.com
       ADMIN_PASSWORD: ci-only-password-123
       API_PORT: 3001
+      API_URL: http://localhost:3001
       WEB_ORIGIN: http://localhost:3000
       NODE_ENV: test
     steps:
