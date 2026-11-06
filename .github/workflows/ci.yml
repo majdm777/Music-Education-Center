@@ -104,6 +104,9 @@ jobs:
       - name: Seed
         run: pnpm db:seed
 
+      - name: Integration tests
+        run: pnpm test:integration
+
       - name: Build
         run: pnpm build
 

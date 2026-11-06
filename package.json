@@ -13,6 +13,7 @@
     "lint": "eslint .",
     "typecheck": "pnpm db:generate && pnpm build:shared && pnpm -r --if-present typecheck",
     "test": "pnpm build:shared && pnpm -r --if-present test",
+    "test:integration": "node scripts/run-integration-tests.mjs",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "db:up": "docker compose up -d --wait",

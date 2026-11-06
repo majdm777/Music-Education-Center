@@ -7,7 +7,8 @@
     "build": "nest build",
     "start": "node ../../scripts/with-env.mjs node dist/main.js",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "vitest run --passWithNoTests"
+    "test": "vitest run --config vitest.config.ts --passWithNoTests",
+    "test:integration": "vitest run --config vitest.integration.config.ts"
   },
   "dependencies": {
     "@mec/shared": "workspace:*",
