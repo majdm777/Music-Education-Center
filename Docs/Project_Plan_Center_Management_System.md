@@ -36,6 +36,28 @@ We do not cut authentication, backups, balance correctness, session counting, or
 
 ---
 
+## Foundation status (6 Nov 2026)
+
+The environment scaffold is hardened and reviewable on `foundation-hardening`. Feature work starts from this branch after it merges.
+
+| Area | Status |
+| --- | --- |
+| Local database | PostgreSQL 17 in Docker (`mec`), plus an isolated `mec_test` that the integration runner creates and resets |
+| Schema | v6 with 43 `CHECK` constraints, partial unique indexes, a composite `(subjectId, type)` foreign key, `citext` email, `timestamptz` instants, and RESTRICT teacher deletes |
+| Migrations | Two committed migrations; `pnpm db:verify` checks names and definitions, `pnpm db:drift` compares the database with `schema.prisma` |
+| Tests | 23 shared unit tests and 58 API integration tests that exercise every database invariant against `mec_test` |
+| CI | Format, lint, type check, unit tests, production dependency audit, build, and a PostgreSQL job that migrates, verifies, seeds, and runs the integration suite |
+| Runtime | Startup environment validation with production guards, Helmet, global throttling, strict input whitelisting, request IDs, non-leaking errors, and hardened web headers |
+| Onboarding | README covers a fresh clone, `db:up`, `db:deploy`, `db:verify`, `db:drift`, `db:seed`, tests, and the two-database layout |
+
+Still open before deployment:
+
+- Hosting is undecided. The Vercel/NestJS spike on 9 Nov decides between Vercel and the container-host fallback.
+- Neon staging and production branches, secrets, backups, and monitoring belong to item 2.
+- The repository is public and `main` is unprotected. Majd must make it private and protect `main` before real data exists.
+
+---
+
 ## Capacity check
 
 | Resource | Hours |
