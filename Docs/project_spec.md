@@ -128,7 +128,7 @@ Public website, accounts for teachers, parents, or students, online payments, me
 | Language | TypeScript everywhere | Strict mode. Money and dates reward strict types |
 | Frontend | Next.js (App Router), Tailwind CSS, shadcn/ui | RTL through logical Tailwind utilities and `dir` |
 | Backend | NestJS, REST API | Modules per domain, class-validator or Zod for input |
-| Database | PostgreSQL on Neon (free), Prisma 6 | Pooled connection at runtime, direct connection for migrations |
+| Database | PostgreSQL 17 (Docker locally; Neon planned for staging and production), Prisma 6 | Pooled connection at runtime, direct connection for migrations |
 | Authentication | Built in-house in NestJS (no Clerk) | Password, TOTP 2FA, recovery codes, 30-minute idle timeout |
 | Email | Resend | Notifications only, to the admin |
 | Hosting | Vercel (see risk 2.7) | Next.js app and API deployed from the same repo |
@@ -143,18 +143,20 @@ Public website, accounts for teachers, parents, or students, online payments, me
 | PDF receipts | `@react-pdf/renderer` or pdfmake with an Arabic font | Day-1 Arabic test. Fallback: HTML receipt printed to PDF |
 | Dates and time zone | `date-fns` + `date-fns-tz` (Asia/Beirut) | |
 | Money | Prisma `Decimal` and `decimal.js` | Never floats |
-| Testing | Jest (API), Vitest (shared and web), Playwright (a few end-to-end flows) | |
+| Testing | Vitest (shared unit tests and API database integration tests), Playwright (planned) | |
 | Monitoring | Sentry free tier, free uptime checker | Ali confirms current limits |
 
 ## 2.2 Engineering Requirements
 
 **Security**
-- HTTPS only, security headers, and a basic content security policy.
+- HTTPS only, security headers (Helmet on the API, hardened headers on the web app), and a basic content security policy.
 - Passwords hashed with argon2id. Login rate limiting and temporary lockout after repeated failures.
 - TOTP two-factor authentication is mandatory. 10 recovery codes, stored hashed. The TOTP secret is encrypted at rest.
 - Session expires after 30 minutes of inactivity.
 - No public sign-up. The admin account is created by a seed script. A forgotten password is reset by Ali with a documented script.
-- All input validated on the server. Prisma queries are parameterized.
+- All input validated on the server with strict whitelisting. Prisma queries are parameterized.
+- Environment variables are validated at startup. Production refuses placeholders, non-HTTPS origins, and missing secrets instead of starting in a degraded state.
+- Unexpected errors are logged server-side and returned without a stack trace; every response carries a request ID.
 - Secrets live in environment variables (Vercel and GitHub secrets), never in the repo. No personal data in logs.
 
 **Reliability and data safety**
@@ -272,11 +274,12 @@ erDiagram
 
 | Environment | Database | Deployment |
 | --- | --- | --- |
-| Local | Neon `dev` branch | Developer machine |
-| Staging | Neon `staging` branch | Preview deployment per pull request |
-| Production | Neon `main` branch | Deployed from `main` after checks |
+| Local | PostgreSQL 17 in Docker (`mec`), plus `mec_test` for integration tests | Developer machine |
+| Staging | Neon `staging` branch (planned) | Preview deployment per pull request |
+| Production | Neon `main` branch (planned) | Deployed from `main` after checks |
 
-- **CI (GitHub Actions):** lint, type check, unit tests, build on every pull request.
+- **CI (GitHub Actions):** format, lint, type check, unit tests, production dependency audit, and build on every push/PR; a PostgreSQL job applies migrations, verifies the SQL objects, checks schema drift, seeds, and runs the API integration suite.
+- **Integration database:** `mec_test` is created and reset by the test runner. The runner refuses any database whose name does not end in `_test`.
 - **Migrations:** run by the pipeline before production deploys, with a backup taken first.
 - **Release:** merge to `main` requires one teammate approval plus passing checks.
 

@@ -88,8 +88,8 @@ model Student {
   school      String?
   notes       String?
   isArchived  Boolean   @default(false)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  createdAt   DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt   DateTime  @updatedAt @db.Timestamptz(3)
 
   enrollments Enrollment[]
 
@@ -104,8 +104,8 @@ model Teacher {
   phone     String?
   payNotes  String? // agreed pay terms, free text
   isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
 
   enrollments Enrollment[]
   sessions    Session[]
@@ -127,11 +127,12 @@ model Subject {
   groupMinutes    Int? // default lesson length, GROUP; null -> Setting default
   oneOnOneMinutes Int? // default lesson length, ONE_ON_ONE
   isActive        Boolean     @default(true)
-  createdAt       DateTime    @default(now())
-  updatedAt       DateTime    @updatedAt
+  createdAt       DateTime    @default(now()) @db.Timestamptz(3)
+  updatedAt       DateTime    @updatedAt @db.Timestamptz(3)
 
   enrollments Enrollment[]
 
+  @@unique([id, type]) // lets Enrollment carry a composite FK on (subjectId, type)
   @@unique([name, type])
   @@index([type, isActive])
 }
@@ -143,8 +144,8 @@ model GradeLevel {
   rate      Decimal  @db.Decimal(6, 3)
   sortOrder Int      @default(0)
   isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
 
   enrollments Enrollment[]
 }
@@ -165,16 +166,17 @@ model Enrollment {
   endDate      DateTime?        @db.Date
 
   sessionsPerMonth Int? // MUSIC only: copied from the subject, editable per student
-  monthlyPrice     Decimal @db.Decimal(12, 2) // USD, saved at enrollment, before discount
+  monthlyPrice     Decimal       @db.Decimal(12, 2) // USD, saved at enrollment, before discount
   discountType     DiscountType?
-  discountValue    Decimal? @db.Decimal(12, 2)
+  discountValue    Decimal?      @db.Decimal(12, 2)
 
   notes     String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
 
   student    Student     @relation(fields: [studentId], references: [id])
-  subject    Subject     @relation(fields: [subjectId], references: [id])
+  // The composite FK keeps Enrollment.type equal to its Subject.type in the database.
+  subject    Subject     @relation(fields: [subjectId, type], references: [id, type], onDelete: Restrict)
   gradeLevel GradeLevel? @relation(fields: [gradeLevelId], references: [id])
   teacher    Teacher     @relation(fields: [teacherId], references: [id])
 
@@ -195,17 +197,17 @@ model Session {
   id            String   @id @default(cuid())
   enrollmentId  String
   teacherId     String
-  startsAt      DateTime
-  endsAt        DateTime
+  startsAt      DateTime @db.Timestamptz(3)
+  endsAt        DateTime @db.Timestamptz(3)
   note          String?
   repeatGroupId String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  createdAt     DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt     DateTime @updatedAt @db.Timestamptz(3)
 
   enrollment Enrollment @relation(fields: [enrollmentId], references: [id])
   teacher    Teacher    @relation(fields: [teacherId], references: [id])
 
-  @@index([enrollmentId, startsAt])
+  @@unique([enrollmentId, startsAt]) // one student cannot have two sessions at the same instant
   @@index([teacherId, startsAt])
   @@index([startsAt])
   @@index([repeatGroupId, startsAt])
@@ -233,19 +235,19 @@ model LedgerEntry {
   method        PaymentMethod?
   receiptNumber Int?           @unique // assigned by the app; payments only
 
-  voidedAt  DateTime?
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  voidedAt  DateTime? @db.Timestamptz(3)
+  createdAt DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime  @updatedAt @db.Timestamptz(3)
 
   enrollment Enrollment @relation(fields: [enrollmentId], references: [id])
+
+  // NOTE: the "one live charge per month" rule is a PARTIAL unique index,
+  // not a Prisma @@unique. See the SQL appendix in Docs/schema.md.
 
   @@index([enrollmentId])
   @@index([date])
   @@index([type, periodMonth])
   @@index([voidedAt])
-
-  // NOTE: the "one live charge per month" rule is a PARTIAL unique index,
-  // not a Prisma @@unique. See the SQL appendix in Docs/schema.md.
 }
 
 model Expense {
@@ -261,11 +263,11 @@ model Expense {
   lbpPerUsd Decimal  @db.Decimal(18, 2)
   amountUsd Decimal  @db.Decimal(14, 2)
 
-  voidedAt  DateTime?
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  voidedAt  DateTime? @db.Timestamptz(3)
+  createdAt DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime  @updatedAt @db.Timestamptz(3)
 
-  teacher Teacher? @relation(fields: [teacherId], references: [id])
+  teacher Teacher? @relation(fields: [teacherId], references: [id], onDelete: Restrict)
 
   @@index([date])
   @@index([category, date])
@@ -276,9 +278,9 @@ model Expense {
 model ExchangeRate {
   id            String   @id @default(cuid())
   lbpPerUsd     Decimal  @db.Decimal(18, 2)
-  effectiveDate DateTime @db.Date @unique
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  effectiveDate DateTime @unique @db.Date
+  createdAt     DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt     DateTime @updatedAt @db.Timestamptz(3)
 }
 
 // ---------------- Configuration ----------------
@@ -287,27 +289,27 @@ model ExchangeRate {
 model Setting {
   key       String   @id
   value     Json
-  updatedAt DateTime @updatedAt
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
 }
 
 // ---------------- Login ----------------
 
 model AdminUser {
-  id                  String    @id @default(cuid())
-  email               String    @unique
+  id                  String   @id @default(cuid())
+  email               String   @unique @db.Citext // case-insensitive login identity
   name                String
   passwordHash        String
-  language            Language  @default(EN)
+  language            Language @default(EN)
   totpSecretEncrypted String?
-  twoFactorEnabled    Boolean   @default(false)
-  recoveryCodeHashes  String[]
+  twoFactorEnabled    Boolean  @default(false)
+  recoveryCodeHashes  String[] @default([])
 
   // Lockout and session revocation without an extra session table.
   failedLoginAttempts Int       @default(0)
-  lockedUntil         DateTime?
+  lockedUntil         DateTime? @db.Timestamptz(3)
   tokenVersion        Int       @default(0)
-  lastLoginAt         DateTime?
+  lastLoginAt         DateTime? @db.Timestamptz(3)
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
 }
