@@ -100,9 +100,7 @@ type EnrollmentInput = Partial<Prisma.EnrollmentUncheckedCreateInput> & {
   type?: SubjectType;
 };
 
-async function createEnrollment(
-  overrides: EnrollmentInput = {},
-): Promise<{ id: string; studentId: string; subjectId: string; teacherId: string }> {
+async function createEnrollment(overrides: EnrollmentInput = {}) {
   const studentId = overrides.studentId ?? (await createStudent()).id;
   const teacherId = overrides.teacherId ?? (await createTeacher()).id;
   const type = overrides.type ?? SubjectType.MUSIC;
@@ -137,7 +135,7 @@ async function createSession(
   enrollmentId: string,
   teacherId: string,
   overrides: Partial<Prisma.SessionUncheckedCreateInput> = {},
-): Promise<{ id: string }> {
+) {
   const startsAt = isoInstant('2026-11-01T10:00:00.000Z');
   return prisma.session.create({
     data: {
@@ -153,7 +151,7 @@ async function createSession(
 async function createLedgerEntry(
   enrollmentId: string,
   overrides: Partial<Prisma.LedgerEntryUncheckedCreateInput> = {},
-): Promise<{ id: string }> {
+) {
   const type = overrides.type ?? LedgerType.CHARGE;
   const cashDefaults =
     type === LedgerType.CHARGE
@@ -399,17 +397,21 @@ describe('enrollment invariants', () => {
     const subject = await createSubject();
     const teacher = await createTeacher();
 
-    await createEnrollment({
+    const active = await createEnrollment({
       studentId: student.id,
       subjectId: subject.id,
       teacherId: teacher.id,
     });
-    await createEnrollment({
+    const paused = await createEnrollment({
       studentId: student.id,
       subjectId: subject.id,
       teacherId: teacher.id,
       status: EnrollmentStatus.PAUSED,
     });
+
+    expect(active.status).toBe(EnrollmentStatus.ACTIVE);
+    expect(paused.status).toBe(EnrollmentStatus.PAUSED);
+    expect(paused.id).not.toBe(active.id);
   });
 });
 
@@ -439,8 +441,11 @@ describe('session invariants', () => {
     const startsAt = isoInstant('2026-11-02T10:00:00.000Z');
     const endsAt = isoInstant('2026-11-02T11:00:00.000Z');
 
-    await createSession(first.id, teacher.id, { startsAt, endsAt });
-    await createSession(second.id, teacher.id, { startsAt, endsAt });
+    const firstSession = await createSession(first.id, teacher.id, { startsAt, endsAt });
+    const secondSession = await createSession(second.id, teacher.id, { startsAt, endsAt });
+
+    expect(firstSession.startsAt).toEqual(secondSession.startsAt);
+    expect(firstSession.id).not.toBe(secondSession.id);
   });
 
   it('rejects a session that ends before it starts', async () => {
@@ -575,13 +580,16 @@ describe('ledger invariants', () => {
 
   it('accepts a consistent LBP payment', async () => {
     const enrollment = await createEnrollment();
-    await createLedgerEntry(enrollment.id, {
+    const payment = await createLedgerEntry(enrollment.id, {
       type: LedgerType.PAYMENT,
       currency: Currency.LBP,
       amount: '89000.00',
       lbpPerUsd: '89000.00',
       amountUsd: '1.00',
     });
+
+    expect(payment.type).toBe(LedgerType.PAYMENT);
+    expect(payment.currency).toBe(Currency.LBP);
   });
 
   it('rejects a non-positive exchange rate on a payment', async () => {
@@ -606,7 +614,10 @@ describe('ledger invariants', () => {
       where: { id: first.id },
       data: { voidedAt: isoInstant('2026-11-02T09:00:00.000Z') },
     });
-    await createLedgerEntry(enrollment.id);
+    const replacement = await createLedgerEntry(enrollment.id);
+
+    expect(replacement.voidedAt).toBeNull();
+    expect(replacement.id).not.toBe(first.id);
   });
 });
 

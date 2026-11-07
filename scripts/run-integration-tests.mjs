@@ -25,10 +25,7 @@ function deriveTestUrl(databaseUrl) {
 function assertTestDatabase(testUrl) {
   const database = new URL(testUrl).pathname.replace(/^\//, '');
   if (!database.endsWith('_test')) {
-    throw new Error(
-      `Refusing to run integration tests against "${database}". ` +
-        'The test database name must end with _test.',
-    );
+    throw new Error('Refusing to run integration tests: the database name must end with _test.');
   }
 }
 
@@ -66,8 +63,9 @@ function main() {
     NODE_ENV: 'test',
   };
 
-  const database = new URL(testUrl).pathname.replace(/^\//, '');
-  console.log(`Preparing isolated test database: ${database}`);
+  // Prisma prints the target database name. Do not print a value derived from
+  // the connection string here; it can contain credentials.
+  console.log('Preparing the isolated test database');
   run(
     'pnpm',
     ['--filter', '@mec/api', 'exec', 'prisma', 'migrate', 'reset', '--force', '--skip-seed'],

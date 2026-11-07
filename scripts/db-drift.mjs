@@ -17,9 +17,18 @@ if (!process.env.DATABASE_URL) {
 
 // --from-schema-datasource reads DATABASE_URL from the schema's datasource
 // block, so the connection string never needs to be passed on the command line.
+const pnpmEntry = process.env.npm_execpath;
+if (!pnpmEntry) {
+  console.error('Run this check through pnpm: pnpm db:drift');
+  process.exit(1);
+}
+
+// Use the current Node binary and the pnpm entry point resolved by pnpm itself.
+// Nothing is resolved through PATH, so a writable PATH entry cannot hijack it.
 const result = spawnSync(
-  'pnpm',
+  process.execPath,
   [
+    pnpmEntry,
     '--filter',
     '@mec/api',
     'exec',
@@ -35,7 +44,7 @@ const result = spawnSync(
   {
     stdio: 'inherit',
     env: process.env,
-    shell: process.platform === 'win32',
+    shell: false,
   },
 );
 
