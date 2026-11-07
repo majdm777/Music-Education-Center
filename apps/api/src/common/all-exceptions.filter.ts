@@ -40,10 +40,11 @@ export class AllExceptionsFilter implements ExceptionFilter {
     }
 
     const error = exception instanceof Error ? exception : new Error(String(exception));
-    this.logger.error(
-      `${request.method} ${request.originalUrl} failed (request ${requestId})`,
-      error.stack,
-    );
+    // encodeURI escapes CR/LF and other unsafe characters so a crafted URL
+    // cannot forge extra log lines.
+    const method = request.method.replace(/[^A-Z]/g, '');
+    const path = encodeURI(request.originalUrl);
+    this.logger.error(`${method} ${path} failed (request ${requestId})`, error.stack);
 
     response.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
       statusCode: HttpStatus.INTERNAL_SERVER_ERROR,

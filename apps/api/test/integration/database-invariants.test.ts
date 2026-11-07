@@ -22,21 +22,7 @@ const prisma = new PrismaClient({
   datasources: { db: { url: testUrl } },
 });
 
-const ALL_TABLES = [
-  'AdminUser',
-  'ExchangeRate',
-  'Expense',
-  'LedgerEntry',
-  'Session',
-  'Enrollment',
-  'GradeLevel',
-  'Subject',
-  'Teacher',
-  'Student',
-  'Setting',
-]
-  .map((table) => `"${table}"`)
-  .join(', ');
+const TEST_HASH = 'test-hash';
 
 let sequence = 0;
 let receiptSequence = 1000;
@@ -216,7 +202,7 @@ async function createAdmin(
     data: {
       email: `${unique('admin').replace(/\s+/g, '.')}@example.com`,
       name: unique('Admin'),
-      passwordHash: 'test-hash',
+      passwordHash: TEST_HASH,
       ...overrides,
     },
   });
@@ -227,7 +213,12 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-  await prisma.$executeRawUnsafe(`TRUNCATE TABLE ${ALL_TABLES} RESTART IDENTITY CASCADE`);
+  await prisma.$executeRaw`
+    TRUNCATE TABLE
+      "AdminUser", "ExchangeRate", "Expense", "LedgerEntry", "Session",
+      "Enrollment", "GradeLevel", "Subject", "Teacher", "Student", "Setting"
+    RESTART IDENTITY CASCADE
+  `;
 });
 
 afterAll(async () => {

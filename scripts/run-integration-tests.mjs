@@ -32,11 +32,21 @@ function assertTestDatabase(testUrl) {
   }
 }
 
+function resolveTestUrl() {
+  const baseUrl = process.env.TEST_DATABASE_URL ?? process.env.DATABASE_URL;
+  if (!baseUrl) {
+    throw new Error('TEST_DATABASE_URL or DATABASE_URL is required');
+  }
+  const testUrl = process.env.TEST_DATABASE_URL ? baseUrl : deriveTestUrl(baseUrl);
+  assertTestDatabase(testUrl);
+  return testUrl;
+}
+
 function run(command, args, env) {
   const result = spawnSync(command, args, {
     stdio: 'inherit',
     env,
-    shell: process.platform === 'win32',
+    shell: false,
   });
   if (result.error) {
     throw result.error;
@@ -46,31 +56,29 @@ function run(command, args, env) {
   }
 }
 
-let testUrl;
+function main() {
+  const testUrl = resolveTestUrl();
+  const env = {
+    ...process.env,
+    DATABASE_URL: testUrl,
+    DIRECT_URL: testUrl,
+    TEST_DATABASE_URL: testUrl,
+    NODE_ENV: 'test',
+  };
+
+  const database = new URL(testUrl).pathname.replace(/^\//, '');
+  console.log(`Preparing isolated test database: ${database}`);
+  run(
+    'pnpm',
+    ['--filter', '@mec/api', 'exec', 'prisma', 'migrate', 'reset', '--force', '--skip-seed'],
+    env,
+  );
+  run('pnpm', ['--filter', '@mec/api', 'test:integration'], env);
+}
+
 try {
-  const baseUrl = process.env.TEST_DATABASE_URL ?? process.env.DATABASE_URL;
-  if (!baseUrl) {
-    throw new Error('TEST_DATABASE_URL or DATABASE_URL is required');
-  }
-  testUrl = process.env.TEST_DATABASE_URL ? baseUrl : deriveTestUrl(baseUrl);
-  assertTestDatabase(testUrl);
+  main();
 } catch (error) {
   console.error(error instanceof Error ? error.message : error);
   process.exit(1);
 }
-
-const env = {
-  ...process.env,
-  DATABASE_URL: testUrl,
-  DIRECT_URL: testUrl,
-  TEST_DATABASE_URL: testUrl,
-  NODE_ENV: 'test',
-};
-
-console.log(`Preparing isolated test database: ${new URL(testUrl).pathname.slice(1)}`);
-run(
-  'pnpm',
-  ['--filter', '@mec/api', 'exec', 'prisma', 'migrate', 'reset', '--force', '--skip-seed'],
-  env,
-);
-run('pnpm', ['--filter', '@mec/api', 'test:integration'], env);
