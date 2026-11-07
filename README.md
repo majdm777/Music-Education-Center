@@ -57,6 +57,7 @@ The seed creates the admin only if it is missing. Re-running it never resets the
 | `pnpm lint`                         | ESLint over the workspace                                  |
 | `pnpm typecheck`                    | Generates Prisma Client, then type-checks every package    |
 | `pnpm test`                         | Unit tests (shared; API tests run here once they exist)    |
+| `pnpm test:coverage`                | Unit tests with lcov output for SonarQube Cloud            |
 | `pnpm test:integration`             | Resets `mec_test` and runs the API database tests          |
 | `pnpm format` / `pnpm format:check` | Prettier                                                   |
 | `pnpm db:up` / `pnpm db:down`       | Local PostgreSQL lifecycle                                 |
@@ -97,6 +98,7 @@ Docs/         Product, plan, architecture and schema documents
 ## Testing
 
 - `pnpm test` runs the unit tests.
+- `pnpm test:coverage` runs the same tests and writes lcov reports for SonarQube Cloud. Only `packages/shared` reports coverage today; `apps/api` is still analysed for bugs, smells, security, and duplication.
 - `pnpm test:integration` creates or resets a separate `mec_test` database, applies the migrations, and checks every database invariant: CHECKs, partial unique indexes, the composite subject FK, `citext`, RESTRICT deletes, and financial consistency.
 - The integration runner refuses any database whose name does not end in `_test`, so it cannot wipe development or production data.
 - `TEST_DATABASE_URL` is optional locally; when omitted, it is derived from `DATABASE_URL` by appending `_test`.
@@ -106,7 +108,19 @@ Docs/         Product, plan, architecture and schema documents
 - LF line endings, enforced by `.gitattributes` and `.editorconfig`.
 - Prettier and ESLint are required checks.
 - `.env` is never committed; `.env.example` documents every variable.
-- Pull requests need green checks and one teammate's approval.
+- Pull requests need green checks and one teammate's approval. Every review follows the [PR review process](Docs/PR_Review_Process.md) and posts the six required sections.
+
+## Code review
+
+Every pull request is reviewed in three layers:
+
+| Layer           | Tool                                     | Role                                                                 |
+| --------------- | ---------------------------------------- | -------------------------------------------------------------------- |
+| LLM review      | [CodeRabbit](https://coderabbit.ai)      | Correctness, security, maintainability, missing tests                |
+| Static analysis | [SonarQube Cloud](https://sonarcloud.io) | Bugs, code smells, duplication, coverage on new code, quality gate   |
+| Human review    | A teammate                               | Product correctness, database guarantees, trade-offs, final approval |
+
+The required checks are `Format, lint, types, tests, build`, `Apply migration, seed, health check`, and `SonarCloud Code Analysis`. Reviews must use the six-section format defined in [`Docs/PR_Review_Process.md`](Docs/PR_Review_Process.md). Configuration lives in [`.coderabbit.yaml`](.coderabbit.yaml), [`sonar-project.properties`](sonar-project.properties), and [`.github/workflows/ci.yml`](.github/workflows/ci.yml).
 
 ## Documentation
 
@@ -116,5 +130,7 @@ Docs/         Product, plan, architecture and schema documents
 | [Project Plan](Docs/Project_Plan_Center_Management_System.md) | Schedule, effort, ownership, milestones, risks, Definition of Done |
 | [Project Spec](Docs/project_spec.md)                          | Architecture, security, API outline, environments, decisions log   |
 | [Schema](Docs/schema.md)                                      | Database v6, invariants, constraints, SQL appendix                 |
+| [PR Review Process](Docs/PR_Review_Process.md)                | Review layers, six-section format, severity, merge gates           |
+| [Security Policy](SECURITY.md)                                | Private vulnerability reporting and secret handling                |
 
 `project_spec.md` is the technical source of truth. `schema.md` is the database source of truth. The PRD is the product source of truth.

@@ -1,0 +1,22 @@
+# CODEOWNERS
+# These owners are requested automatically when a pull request touches the
+# matching path. "Require review from Code Owners" only works after this file
+# exists on the base branch.
+
+# Default owner for everything not matched below.
+* @majdm777 @mirnaderbieh @Ali123othman
+
+# Database schema, migrations, seed, and constraint verification.
+/apps/api/prisma/ @majdm777 @mirnaderbieh
+
+# CI, review tooling, dependency updates, and repository configuration.
+/.github/ @majdm777 @mirnaderbieh
+
+# Shared contracts, environment validation, and domain math.
+/packages/shared/ @majdm777 @mirnaderbieh
+
+# Product, architecture, plan, and schema documentation.
+/Docs/ @majdm777 @mirnaderbieh
+
+# Security policy.
+/SECURITY.md @majdm777

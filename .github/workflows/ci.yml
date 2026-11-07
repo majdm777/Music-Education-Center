@@ -4,7 +4,7 @@ on:
   push:
     branches: [main, initial-setup, foundation-hardening]
   pull_request:
-    branches: [main]
+    branches: [main, initial-setup]
 
 permissions:
   contents: read
@@ -133,3 +133,39 @@ jobs:
           done
           echo "API did not become healthy"
           exit 1
+
+  sonarqube:
+    name: SonarCloud Code Analysis
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Full history gives Sonar accurate SCM blame and PR new-code detection.
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Unit test coverage
+        run: pnpm test:coverage
+
+      - name: SonarCloud scan
+        # Fork PRs and Dependabot PRs never receive repository secrets. The job
+        # still succeeds so the check stays green instead of blocking the PR.
+        if: >-
+          github.actor != 'dependabot[bot]' &&
+          (github.event_name != 'pull_request' ||
+          github.event.pull_request.head.repo.full_name == github.repository)
+        uses: SonarSource/sonarqube-scan-action@v8.4.1
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
