@@ -90,7 +90,7 @@ Docs/         Product, plan, architecture and schema documents
 - Schema v6, 11 tables. `Docs/schema.md` is the source of truth; `apps/api/prisma/schema.prisma` mirrors it.
 - Two migrations are committed: the initial tables and base checks, then the hardening migration (`citext`, `timestamptz`, composite subject FK, unique active enrollment and session slots, stricter financial checks).
 - `pnpm db:verify` fails if a required index, CHECK, foreign key, date/timestamp type, or the receipt sequence disappears.
-- `pnpm db:drift` fails when the live database or the applied migrations drift from `prisma/schema.prisma`.
+- `pnpm db:drift` fails when the live database schema drifts from `prisma/schema.prisma`. It compares the live schema, not migration history or checksums, so editing a migration that was already applied can still pass when the live schema matches. `db:verify` and the integration tests cover the constraints themselves.
 - Balance, revenue, profit and remaining sessions are computed from rows, never stored.
 - Money is `Decimal` end to end; rounding is HALF_UP to two decimals.
 - Timestamps are `timestamptz` in UTC; calendar dates stay `date`; month windows and "today" are `Asia/Beirut`.

@@ -22,9 +22,9 @@ Configuration lives in:
 
 - [`.coderabbit.yaml`](../.coderabbit.yaml)
 - [`sonar-project.properties`](../sonar-project.properties)
-- [`.github/workflows/ci.yml`](workflows/ci.yml)
-- [`.github/CODEOWNERS`](CODEOWNERS)
-- [`.github/pull_request_template.md`](pull_request_template.md)
+- [`.github/workflows/ci.yml`](../.github/workflows/ci.yml)
+- [`.github/CODEOWNERS`](../.github/CODEOWNERS)
+- [`.github/pull_request_template.md`](../.github/pull_request_template.md)
 
 ## Required review format
 
@@ -189,11 +189,20 @@ Required checks:
 - `Apply migration, seed, health check`
 - `SonarCloud Code Analysis`
 
+`SonarCloud Code Analysis` counts as a quality-gate result only when it actually
+ran a scan. On fork and Dependabot pull requests the job can finish green without
+scanning because the needed context or secrets are unavailable. A skipped scan is
+not a passed gate: a maintainer must re-run the analysis from a trusted ref or
+record in the review that the gate was not evaluated, and resolve that before
+merging.
+
 `CodeRabbit` is advisory during the first two weeks. After the team tunes the
 configuration, it can be added as a required check.
 
-Branch protection for `main` and `initial-setup` blocks direct pushes, force
-pushes, and deletion. Direct pushes are not a shortcut; they are a review failure.
+Branch protection is the target state for both `main` and `initial-setup`: no
+direct pushes, no force pushes, no deletion. Until protection is enabled on a
+branch, these gates are still team policy. A maintainer who pushes or merges
+around them creates a review failure, not a shortcut.
 
 ## Reviewing database changes
 

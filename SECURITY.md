@@ -11,8 +11,10 @@ Use GitHub's private vulnerability reporting:
 2. Describe the issue, the affected area, and the steps to reproduce it.
 3. If you have a suggested fix, include it.
 
-If private reporting is unavailable, contact the repository maintainers listed in
-[`.github/CODEOWNERS`](.github/CODEOWNERS) through a private channel.
+If private reporting is unavailable, email the maintainers at
+[mirnaderbieh1@gmail.com](mailto:mirnaderbieh1@gmail.com). This address is public,
+so prefer the GitHub form above when it works. Do not include exploit details in a
+public issue.
 
 ## What to include
 

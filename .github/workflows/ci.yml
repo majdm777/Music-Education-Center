@@ -167,5 +167,11 @@ jobs:
           (github.event_name != 'pull_request' ||
           github.event.pull_request.head.repo.full_name == github.repository)
         uses: SonarSource/sonarqube-scan-action@v8.4.1
+        with:
+          # The free SonarCloud plan refuses quality-gate status for non-main
+          # branches. Waiting there fails every push to a feature branch or
+          # initial-setup, so wait only for pull requests and main. Elsewhere
+          # the scan still runs and reports its findings.
+          args: -Dsonar.qualitygate.wait=${{ github.event_name == 'pull_request' || github.ref == 'refs/heads/main' }}
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}

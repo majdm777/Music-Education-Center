@@ -43,7 +43,9 @@ function run(command, args, env) {
   const result = spawnSync(command, args, {
     stdio: 'inherit',
     env,
-    shell: false,
+    // Windows exposes pnpm as a .cmd shim, which cannot be spawned without a
+    // shell. POSIX stays shell-free so arguments are never re-parsed.
+    shell: process.platform === 'win32',
   });
   if (result.error) {
     throw result.error;

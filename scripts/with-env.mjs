@@ -13,13 +13,16 @@ if (existsSync(envFile)) {
 
 const [command, ...args] = process.argv.slice(2);
 
-// Only the tooling commands used by package.json are allowed. The command is
-// never passed to a shell, so a caller cannot inject a second command.
+// Only the tooling commands used by package.json are allowed. On POSIX the
+// command is never passed to a shell, so a caller cannot inject a second
+// command. Windows needs a shell to launch the .cmd shims for pnpm and tsx.
+const useShell = process.platform === 'win32';
+
 function start(executable, commandArgs) {
   const child = spawn(executable, commandArgs, {
     stdio: 'inherit',
     env: process.env,
-    shell: false,
+    shell: useShell,
   });
 
   child.on('error', (error) => {

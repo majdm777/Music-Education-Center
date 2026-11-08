@@ -26,7 +26,11 @@ reviews:
     - '!**/.next/**'
     - '!**/coverage/**'
     - '!**/*.tsbuildinfo'
-    - '!pnpm-lock.yaml'
+    # CodeRabbit skips lockfiles by default. Re-include the exact default
+    # pattern without its "!" so a dependency-only pull request is still
+    # reviewed. An include pattern that is not an exact default override would
+    # restrict review to lockfiles only.
+    - '**/pnpm-lock.yaml'
 
   path_instructions:
     - path: 'apps/api/prisma/**'
