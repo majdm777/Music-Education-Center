@@ -3,6 +3,7 @@ import { spawnSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { config } from 'dotenv';
+import { windowsPnpmArgs } from './windows-command.mjs';
 
 // Load the repo-root .env when it exists. In CI the variables are already set.
 const envFile = resolve(import.meta.dirname, '..', '.env');
@@ -39,13 +40,15 @@ function resolveTestUrl() {
   return testUrl;
 }
 
-function run(command, args, env) {
-  const result = spawnSync(command, args, {
+function runPnpm(args, env) {
+  // Windows exposes pnpm as a .cmd shim. Launch its JavaScript entry point with
+  // Node instead of a shell, so caller arguments are never re-parsed.
+  const command = process.platform === 'win32' ? process.execPath : 'pnpm';
+  const commandArgs = process.platform === 'win32' ? windowsPnpmArgs(args, env) : args;
+  const result = spawnSync(command, commandArgs, {
     stdio: 'inherit',
     env,
-    // Windows exposes pnpm as a .cmd shim, which cannot be spawned without a
-    // shell. POSIX stays shell-free so arguments are never re-parsed.
-    shell: process.platform === 'win32',
+    shell: false,
   });
   if (result.error) {
     throw result.error;
@@ -68,12 +71,11 @@ function main() {
   // Prisma prints the target database name. Do not print a value derived from
   // the connection string here; it can contain credentials.
   console.log('Preparing the isolated test database');
-  run(
-    'pnpm',
+  runPnpm(
     ['--filter', '@mec/api', 'exec', 'prisma', 'migrate', 'reset', '--force', '--skip-seed'],
     env,
   );
-  run('pnpm', ['--filter', '@mec/api', 'test:integration'], env);
+  runPnpm(['--filter', '@mec/api', 'test:integration'], env);
 }
 
 try {
