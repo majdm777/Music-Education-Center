@@ -6,7 +6,7 @@ This document is for the team. It covers what we build, in what order, who owns 
 
 **Client:** Abdullah Maatouk
 **Team:** Majd Maatouk (Team Lead, design and engineering), Mirna Derbieh (Product Manager, design and engineering), Ali Othman (DevOps)
-**Stack:** TypeScript, Next.js (App Router), NestJS, Prisma 6, PostgreSQL on Neon, pnpm workspaces
+**Stack:** TypeScript, Next.js (App Router), NestJS, Prisma 6, PostgreSQL 17 (Docker locally; Neon planned for staging/production), pnpm workspaces
 **Target:** 9 Nov to 20 Nov 2026 (10 working days). **Buffer:** 23 Nov to 25 Nov 2026.
 **Environment setup:** 4 Nov to 8 Nov 2026, before kickoff.
 **Sign-off:** client and team lead.
@@ -33,6 +33,28 @@ The original plan assumed a single React app with Prisma. The approved v6 scope 
 4. Excel formatting polish (11.3, -2h) - raw sheets are acceptable; the data is what matters.
 
 We do not cut authentication, backups, balance correctness, session counting, or RTL.
+
+---
+
+## Foundation status (6 Nov 2026)
+
+The environment scaffold is hardened and reviewable on `foundation-hardening`. Feature work starts from this branch after it merges.
+
+| Area | Status |
+| --- | --- |
+| Local database | PostgreSQL 17 in Docker (`mec`), plus an isolated `mec_test` that the integration runner creates and resets |
+| Schema | v6 with 43 `CHECK` constraints, partial unique indexes, a composite `(subjectId, type)` foreign key, `citext` email, `timestamptz` instants, and RESTRICT teacher deletes |
+| Migrations | Two committed migrations; `pnpm db:verify` checks names and definitions, `pnpm db:drift` compares the database with `schema.prisma` |
+| Tests | 23 shared unit tests and 58 API integration tests that exercise every database invariant against `mec_test` |
+| CI | Format, lint, type check, unit tests, production dependency audit, build, and a PostgreSQL job that migrates, verifies, seeds, and runs the integration suite |
+| Runtime | Startup environment validation with production guards, Helmet, global throttling, strict input whitelisting, request IDs, non-leaking errors, and hardened web headers |
+| Onboarding | README covers a fresh clone, `db:up`, `db:deploy`, `db:verify`, `db:drift`, `db:seed`, tests, and the two-database layout |
+
+Still open before deployment:
+
+- Hosting is undecided. The Vercel/NestJS spike on 9 Nov decides between Vercel and the container-host fallback.
+- Neon staging and production branches, secrets, backups, and monitoring belong to item 2.
+- The repository is public and `main` is unprotected. Majd must make it private and protect `main` before real data exists.
 
 ---
 
@@ -80,9 +102,9 @@ We do not cut authentication, backups, balance correctness, session counting, or
 | HL # | Item # | Description | Start | End | Effort (h) | Depends on | Engineer | Deliverable |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | 1 | 1.1 | Move repo to WSL ext4, repo hygiene, pnpm workspace, Node/pnpm pins, lint/format, env validation | 2026-11-04 | 2026-11-04 | 3 | N/A | Majd | Reproducible workspace |
-| 1 | 1.2 | Prisma v6 schema, initial migration with partial index/CHECKs/sequence, seed (admin, grades, subjects, settings) | 2026-11-05 | 2026-11-06 | 4 | 1.1 | Majd | Migrated, seeded Docker database |
+| 1 | 1.2 | Prisma v6 schema, migrations with partial indexes/CHECKs/composite FK/sequence, seed (admin, grades, subjects, settings), constraint integration tests | 2026-11-05 | 2026-11-06 | 4 | 1.1 | Majd | Hardened, migrated, seeded Docker database |
 | 1 | 1.3 | Design tokens (placeholder brand), base components, form patterns, Arabic font | 2026-11-05 | 2026-11-08 | 5 | 1.1 | Mirna | Base UI kit |
-| 1 | 1.4 | Local/CI env docs, `.env.example`, health check, web-to-API rewrite verified | 2026-11-07 | 2026-11-08 | 2 | 1.1 | Majd | Fresh-clone setup works |
+| 1 | 1.4 | Local/CI env docs, `.env.example`, health check, web-to-API rewrite verified, drift and audit checks | 2026-11-07 | 2026-11-08 | 2 | 1.1 | Majd | Fresh-clone setup works |
 
 ### 2. DevOps and deployment (44h, 9-20 Nov)
 

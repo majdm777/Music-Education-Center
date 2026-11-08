@@ -4,6 +4,7 @@ export type DiscountType = 'PERCENT' | 'FIXED';
 
 export const MONEY_SCALE = 2;
 
+/** Wraps a value in a Decimal so money math never uses JavaScript floats. */
 export function money(value: Decimal.Value): Decimal {
   return new Decimal(value);
 }

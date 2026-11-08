@@ -1,0 +1,77 @@
+# CodeRabbit configuration.
+# CodeRabbit reads this file from the base branch of a pull request, so it takes
+# effect only after it has been merged into main / initial-setup.
+language: en-US
+
+reviews:
+  profile: assertive
+  request_changes_workflow: false
+  high_level_summary: true
+  review_status: true
+  poem: false
+  sequence_diagrams: false
+  changed_files_summary: true
+  estimate_code_review_effort: true
+
+  auto_review:
+    enabled: true
+    drafts: false
+    auto_incremental_review: true
+    base_branches:
+      - main
+      - initial-setup
+
+  path_filters:
+    - '!**/dist/**'
+    - '!**/.next/**'
+    - '!**/coverage/**'
+    - '!**/*.tsbuildinfo'
+    # CodeRabbit skips lockfiles by default. Re-include the exact default
+    # pattern without its "!" so a dependency-only pull request is still
+    # reviewed. An include pattern that is not an exact default override would
+    # restrict review to lockfiles only.
+    - '**/pnpm-lock.yaml'
+
+  path_instructions:
+    - path: 'apps/api/prisma/**'
+      instructions: >-
+        Focus on data integrity, constraint correctness, and migration safety.
+        Every business rule must be enforceable by PostgreSQL where possible.
+        Flag rules that only exist in application code, checks that disagree with
+        Docs/schema.md or the PRD, and migrations that could fail on existing rows.
+        Confirm that apps/api/prisma/verify.ts asserts any new index, CHECK,
+        foreign key, or sequence.
+
+    - path: 'packages/shared/src/**'
+      instructions: >-
+        This package holds the environment schema and pure domain math. Check
+        fail-fast environment validation, production guards, Decimal rounding
+        (HALF_UP, two decimals), and that money helpers never silently swallow
+        invalid input. Flag any clamping or fallback that hides bad data.
+
+    - path: 'apps/api/src/**'
+      instructions: >-
+        Check NestJS boundaries, input validation with Zod or class-validator,
+        authorization on every mutating endpoint, error responses that do not
+        leak internals, and that financial writes happen in a transaction.
+
+    - path: 'apps/web/**'
+      instructions: >-
+        Check server/client component boundaries, RTL correctness, accessible
+        markup, and that secrets or privileged database access never reach the
+        browser bundle. Flag missing security headers.
+
+    - path: '.github/workflows/**'
+      instructions: >-
+        Check that workflows run for every pull request base branch the team
+        uses (main, initial-setup), that permissions are least-privilege, and
+        that fork or Dependabot pull requests never receive repository secrets.
+
+    - path: '**/*.test.ts'
+      instructions: >-
+        Tests must assert behaviour and invariants, not implementation details.
+        Flag tests that would pass while the underlying rule is broken, and
+        missing coverage for new database constraints.
+
+chat:
+  auto_reply: false
