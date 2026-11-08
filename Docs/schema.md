@@ -267,7 +267,7 @@ model Session {
   enrollment Enrollment @relation(fields: [enrollmentId], references: [id])
   teacher    Teacher    @relation(fields: [teacherId], references: [id])
 
-  @@unique([enrollmentId, startsAt]) // one student cannot be in two places at once
+  @@unique([enrollmentId, startsAt]) // one enrollment cannot have two sessions at the same instant
   @@index([teacherId, startsAt])
   @@index([startsAt])
   @@index([repeatGroupId, startsAt])
@@ -319,7 +319,7 @@ model Expense {
   category    ExpenseCategory
   description String
   date        DateTime        @db.Date
-  teacherId   String?         // for TEACHER_PAY
+  teacherId   String?         // optional; any category may name a related teacher
   notes       String?
 
   amount    Decimal  @db.Decimal(18, 2)
@@ -406,7 +406,9 @@ CREATE UNIQUE INDEX "enrollment_one_active_per_subject_format"
   ON "Enrollment" ("studentId", "subjectId", "format")
   WHERE "status" = 'ACTIVE';
 
--- A student cannot have two sessions at the same instant.
+-- One enrollment cannot have two sessions at the same instant. Two enrollments
+-- of the same student can still be booked at once; that cross-enrollment rule
+-- is not enforced by the database.
 CREATE UNIQUE INDEX "Session_enrollmentId_startsAt_key"
   ON "Session" ("enrollmentId", "startsAt");
 
@@ -422,7 +424,8 @@ ALTER TABLE "Enrollment"
     FOREIGN KEY ("subjectId", "type") REFERENCES "Subject" ("id", "type")
     ON DELETE RESTRICT ON UPDATE CASCADE;
 
--- Financial history must not lose its teacher when a teacher row is deleted.
+-- An expense may name a teacher (any category); that teacher cannot be deleted
+-- while the expense still references them.
 ALTER TABLE "Expense"
   ADD CONSTRAINT "Expense_teacherId_fkey"
     FOREIGN KEY ("teacherId") REFERENCES "Teacher" ("id")
@@ -433,8 +436,11 @@ ALTER TABLE "Expense"
 
 ```sql
 ALTER TABLE "LedgerEntry"
+  -- The init migration keeps ledger_amount_usd_nonnegative (>= 0). A CHARGE may
+  -- be exactly zero when a discount covers the whole price; a PAYMENT or REFUND
+  -- of zero is meaningless.
   ADD CONSTRAINT "ledger_amount_usd_positive"
-    CHECK ("amountUsd" > 0),
+    CHECK ("type" = 'CHARGE' OR "amountUsd" > 0),
   ADD CONSTRAINT "ledger_amount_positive"
     CHECK ("amount" IS NULL OR "amount" > 0),
   ADD CONSTRAINT "ledger_charge_requires_period"
@@ -499,6 +505,8 @@ ALTER TABLE "Enrollment"
     CHECK ("type" <> 'MUSIC' OR "gradeLevelId" IS NULL),
   ADD CONSTRAINT "enrollment_music_sessions_only"
     CHECK ("type" = 'MUSIC' OR "sessionsPerMonth" IS NULL),
+  ADD CONSTRAINT "enrollment_music_requires_sessions"
+    CHECK ("type" <> 'MUSIC' OR "sessionsPerMonth" IS NOT NULL),
   ADD CONSTRAINT "enrollment_dates_ordered"
     CHECK ("endDate" IS NULL OR "endDate" >= "startDate"),
   ADD CONSTRAINT "enrollment_ended_has_end_date"
@@ -546,9 +554,9 @@ ALTER TABLE "Expense"
     CHECK (
       ("currency" = 'USD' AND "amount" = "amountUsd") OR
       ("currency" = 'LBP' AND "amountUsd" = round("amount" / "lbpPerUsd", 2))
-    ),
-  ADD CONSTRAINT "expense_teacher_matches_category"
-    CHECK (("category" = 'TEACHER_PAY') = ("teacherId" IS NOT NULL));
+    );
+-- The teacher link is optional for every category. A TEACHER_PAY expense does
+-- not need one, and any other category may still name the teacher it relates to.
 
 ALTER TABLE "ExchangeRate"
   ADD CONSTRAINT "exchange_rate_positive"
@@ -557,22 +565,25 @@ ALTER TABLE "ExchangeRate"
 
 ### 4.7 Identity constraints
 
+`btrim` strips spaces by default, so every nonblank check also strips tabs,
+newlines, and carriage returns. A value made only of whitespace is rejected.
+
 ```sql
 ALTER TABLE "Student"
-  ADD CONSTRAINT "student_full_name_nonblank" CHECK (btrim("fullName") <> '');
+  ADD CONSTRAINT "student_full_name_nonblank" CHECK (btrim("fullName", E' \t\n\r') <> '');
 ALTER TABLE "Teacher"
-  ADD CONSTRAINT "teacher_full_name_nonblank" CHECK (btrim("fullName") <> '');
+  ADD CONSTRAINT "teacher_full_name_nonblank" CHECK (btrim("fullName", E' \t\n\r') <> '');
 ALTER TABLE "Subject"
-  ADD CONSTRAINT "subject_name_nonblank" CHECK (btrim("name") <> '');
+  ADD CONSTRAINT "subject_name_nonblank" CHECK (btrim("name", E' \t\n\r') <> '');
 ALTER TABLE "GradeLevel"
-  ADD CONSTRAINT "grade_name_nonblank" CHECK (btrim("name") <> '');
+  ADD CONSTRAINT "grade_name_nonblank" CHECK (btrim("name", E' \t\n\r') <> '');
 ALTER TABLE "Setting"
-  ADD CONSTRAINT "setting_key_nonblank" CHECK (btrim("key") <> '');
+  ADD CONSTRAINT "setting_key_nonblank" CHECK (btrim("key", E' \t\n\r') <> '');
 ALTER TABLE "Expense"
-  ADD CONSTRAINT "expense_description_nonblank" CHECK (btrim("description") <> '');
+  ADD CONSTRAINT "expense_description_nonblank" CHECK (btrim("description", E' \t\n\r') <> '');
 ALTER TABLE "AdminUser"
-  ADD CONSTRAINT "admin_email_nonblank" CHECK (btrim("email"::text) <> ''),
-  ADD CONSTRAINT "admin_name_nonblank" CHECK (btrim("name") <> ''),
+  ADD CONSTRAINT "admin_email_nonblank" CHECK (btrim("email"::text, E' \t\n\r') <> ''),
+  ADD CONSTRAINT "admin_name_nonblank" CHECK (btrim("name", E' \t\n\r') <> ''),
   ADD CONSTRAINT "admin_2fa_requires_secret"
     CHECK (NOT "twoFactorEnabled" OR "totpSecretEncrypted" IS NOT NULL);
 ```
@@ -589,7 +600,6 @@ CREATE SEQUENCE "receipt_number_seq" AS INTEGER START WITH 1 INCREMENT BY 1;
 
 Some rules cross tables or depend on the caller's intent, so they cannot be CHECK constraints. They are centralized in `packages/shared` and the NestJS services, and covered by tests:
 
-- A `MUSIC` enrollment requires `sessionsPerMonth`; an `EDUCATION` enrollment leaves it null. The database already rejects the opposite.
 - A refund may not exceed the enrollment's non-voided payments minus prior refunds, checked inside the same transaction.
 - A charge proposal for month M includes enrollments where `startDate <= last day of M` and `status <> 'PAUSED'`, and:
   - `ACTIVE`: always included;
@@ -610,7 +620,7 @@ Some rules cross tables or depend on the caller's intent, so they cannot be CHEC
 | Revenue | `sum(PAYMENT.amountUsd) - sum(REFUND.amountUsd)` by `date`, non-voided. |
 | Profit | Revenue - non-voided expenses by `date`. |
 | Refund cap | Non-voided refunds for an enrollment cannot exceed non-voided payments minus prior refunds. Enforced in a transaction. |
-| Charge amount | `monthlyPrice` minus the enrollment discount (percent, or fixed clamped at 0). Editable per charge in the review list; saved on the `CHARGE` row. |
+| Charge amount | `monthlyPrice` minus the enrollment discount (percent, or fixed clamped at 0). Editable per charge in the review list; saved on the `CHARGE` row. May be exactly `0` when the discount covers the whole price. |
 | Void | Sets `voidedAt`; balance and revenue exclude the row immediately. Receipt numbers are never reused. |
 | Receipts | Global monotonic sequence; gaps after a rolled-back transaction are acceptable. |
 | Dashboard conversion | USD totals are converted for the LBP view at the rate effective on the period end. If no rate exists on that date, the latest prior rate is used and the UI labels it. |
@@ -689,6 +699,11 @@ There is no production data yet, so v6 is created as the **initial** migration r
 9. Currency and amount fields are documented as payment **and refund** fields.
 10. Cash and period `CHECK` constraints, and the receipt sequence, are added in SQL.
 11. The hardening migration (`20261106000000_harden_constraints`) adds `citext` email, `timestamptz` instants, the composite subject FK, one-active-enrollment and session-slot uniqueness, stricter financial coherence checks, and RESTRICT on teacher deletion.
+
+Two deployment notes for the hardening migration:
+
+- Existing instants are converted with `USING <column> AT TIME ZONE 'UTC'`, so the stored instant is preserved regardless of the connection's time zone.
+- Converting `AdminUser.email` to `CITEXT` rebuilds a unique index. Before deploying to a database that already has admins, find emails that differ only by case with `SELECT lower(email), count(*) FROM "AdminUser" GROUP BY 1 HAVING count(*) > 1;` and reconcile them. If the deploy fails, clear the failed record with `pnpm --filter @mec/api exec prisma migrate resolve --rolled-back 20261106000000_harden_constraints`, then retry.
 
 ---
 

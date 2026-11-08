@@ -5,6 +5,14 @@
 -- Case-insensitive admin email needs the citext extension.
 CREATE EXTENSION IF NOT EXISTS "citext";
 
+-- CITEXT makes AdminUser.email case-insensitive. If this migration ever runs
+-- against a database whose admin emails differ only by case, the unique index
+-- rebuild fails. Before deploying, find duplicates with:
+--   SELECT lower(email), count(*) FROM "AdminUser" GROUP BY 1 HAVING count(*) > 1;
+-- Reconcile them, then retry. After a failed deploy, clear the failed record with
+--   pnpm --filter @mec/api exec prisma migrate resolve --rolled-back 20261106000000_harden_constraints
+-- and re-run the deploy.
+
 -- Enforce Enrollment.type = Subject.type with a composite foreign key.
 ALTER TABLE "Enrollment" DROP CONSTRAINT "Enrollment_subjectId_fkey";
 
@@ -14,46 +22,59 @@ ALTER TABLE "Expense" DROP CONSTRAINT "Expense_teacherId_fkey";
 -- An enrollment cannot have two sessions at the same instant.
 DROP INDEX "Session_enrollmentId_startsAt_idx";
 
--- Store instants with time zone; calendar dates stay DATE.
-ALTER TABLE "AdminUser" ALTER COLUMN "email" SET DATA TYPE CITEXT,
-ALTER COLUMN "recoveryCodeHashes" SET DEFAULT ARRAY[]::TEXT[],
-ALTER COLUMN "lockedUntil" SET DATA TYPE TIMESTAMPTZ(3),
-ALTER COLUMN "lastLoginAt" SET DATA TYPE TIMESTAMPTZ(3),
-ALTER COLUMN "createdAt" SET DATA TYPE TIMESTAMPTZ(3),
-ALTER COLUMN "updatedAt" SET DATA TYPE TIMESTAMPTZ(3);
+-- Store instants with time zone; calendar dates stay DATE. Existing values were
+-- written by Prisma in UTC, so USING ... AT TIME ZONE 'UTC' preserves the
+-- instant regardless of the connection's TimeZone setting.
+ALTER TABLE "AdminUser"
+  ALTER COLUMN "email" SET DATA TYPE CITEXT,
+  ALTER COLUMN "recoveryCodeHashes" SET DEFAULT ARRAY[]::TEXT[],
+  ALTER COLUMN "lockedUntil" SET DATA TYPE TIMESTAMPTZ(3) USING "lockedUntil" AT TIME ZONE 'UTC',
+  ALTER COLUMN "lastLoginAt" SET DATA TYPE TIMESTAMPTZ(3) USING "lastLoginAt" AT TIME ZONE 'UTC',
+  ALTER COLUMN "createdAt" SET DATA TYPE TIMESTAMPTZ(3) USING "createdAt" AT TIME ZONE 'UTC',
+  ALTER COLUMN "updatedAt" SET DATA TYPE TIMESTAMPTZ(3) USING "updatedAt" AT TIME ZONE 'UTC';
 
-ALTER TABLE "Enrollment" ALTER COLUMN "createdAt" SET DATA TYPE TIMESTAMPTZ(3),
-ALTER COLUMN "updatedAt" SET DATA TYPE TIMESTAMPTZ(3);
+ALTER TABLE "Enrollment"
+  ALTER COLUMN "createdAt" SET DATA TYPE TIMESTAMPTZ(3) USING "createdAt" AT TIME ZONE 'UTC',
+  ALTER COLUMN "updatedAt" SET DATA TYPE TIMESTAMPTZ(3) USING "updatedAt" AT TIME ZONE 'UTC';
 
-ALTER TABLE "ExchangeRate" ALTER COLUMN "createdAt" SET DATA TYPE TIMESTAMPTZ(3),
-ALTER COLUMN "updatedAt" SET DATA TYPE TIMESTAMPTZ(3);
+ALTER TABLE "ExchangeRate"
+  ALTER COLUMN "createdAt" SET DATA TYPE TIMESTAMPTZ(3) USING "createdAt" AT TIME ZONE 'UTC',
+  ALTER COLUMN "updatedAt" SET DATA TYPE TIMESTAMPTZ(3) USING "updatedAt" AT TIME ZONE 'UTC';
 
-ALTER TABLE "Expense" ALTER COLUMN "voidedAt" SET DATA TYPE TIMESTAMPTZ(3),
-ALTER COLUMN "createdAt" SET DATA TYPE TIMESTAMPTZ(3),
-ALTER COLUMN "updatedAt" SET DATA TYPE TIMESTAMPTZ(3);
+ALTER TABLE "Expense"
+  ALTER COLUMN "voidedAt" SET DATA TYPE TIMESTAMPTZ(3) USING "voidedAt" AT TIME ZONE 'UTC',
+  ALTER COLUMN "createdAt" SET DATA TYPE TIMESTAMPTZ(3) USING "createdAt" AT TIME ZONE 'UTC',
+  ALTER COLUMN "updatedAt" SET DATA TYPE TIMESTAMPTZ(3) USING "updatedAt" AT TIME ZONE 'UTC';
 
-ALTER TABLE "GradeLevel" ALTER COLUMN "createdAt" SET DATA TYPE TIMESTAMPTZ(3),
-ALTER COLUMN "updatedAt" SET DATA TYPE TIMESTAMPTZ(3);
+ALTER TABLE "GradeLevel"
+  ALTER COLUMN "createdAt" SET DATA TYPE TIMESTAMPTZ(3) USING "createdAt" AT TIME ZONE 'UTC',
+  ALTER COLUMN "updatedAt" SET DATA TYPE TIMESTAMPTZ(3) USING "updatedAt" AT TIME ZONE 'UTC';
 
-ALTER TABLE "LedgerEntry" ALTER COLUMN "voidedAt" SET DATA TYPE TIMESTAMPTZ(3),
-ALTER COLUMN "createdAt" SET DATA TYPE TIMESTAMPTZ(3),
-ALTER COLUMN "updatedAt" SET DATA TYPE TIMESTAMPTZ(3);
+ALTER TABLE "LedgerEntry"
+  ALTER COLUMN "voidedAt" SET DATA TYPE TIMESTAMPTZ(3) USING "voidedAt" AT TIME ZONE 'UTC',
+  ALTER COLUMN "createdAt" SET DATA TYPE TIMESTAMPTZ(3) USING "createdAt" AT TIME ZONE 'UTC',
+  ALTER COLUMN "updatedAt" SET DATA TYPE TIMESTAMPTZ(3) USING "updatedAt" AT TIME ZONE 'UTC';
 
-ALTER TABLE "Session" ALTER COLUMN "startsAt" SET DATA TYPE TIMESTAMPTZ(3),
-ALTER COLUMN "endsAt" SET DATA TYPE TIMESTAMPTZ(3),
-ALTER COLUMN "createdAt" SET DATA TYPE TIMESTAMPTZ(3),
-ALTER COLUMN "updatedAt" SET DATA TYPE TIMESTAMPTZ(3);
+ALTER TABLE "Session"
+  ALTER COLUMN "startsAt" SET DATA TYPE TIMESTAMPTZ(3) USING "startsAt" AT TIME ZONE 'UTC',
+  ALTER COLUMN "endsAt" SET DATA TYPE TIMESTAMPTZ(3) USING "endsAt" AT TIME ZONE 'UTC',
+  ALTER COLUMN "createdAt" SET DATA TYPE TIMESTAMPTZ(3) USING "createdAt" AT TIME ZONE 'UTC',
+  ALTER COLUMN "updatedAt" SET DATA TYPE TIMESTAMPTZ(3) USING "updatedAt" AT TIME ZONE 'UTC';
 
-ALTER TABLE "Setting" ALTER COLUMN "updatedAt" SET DATA TYPE TIMESTAMPTZ(3);
+ALTER TABLE "Setting"
+  ALTER COLUMN "updatedAt" SET DATA TYPE TIMESTAMPTZ(3) USING "updatedAt" AT TIME ZONE 'UTC';
 
-ALTER TABLE "Student" ALTER COLUMN "createdAt" SET DATA TYPE TIMESTAMPTZ(3),
-ALTER COLUMN "updatedAt" SET DATA TYPE TIMESTAMPTZ(3);
+ALTER TABLE "Student"
+  ALTER COLUMN "createdAt" SET DATA TYPE TIMESTAMPTZ(3) USING "createdAt" AT TIME ZONE 'UTC',
+  ALTER COLUMN "updatedAt" SET DATA TYPE TIMESTAMPTZ(3) USING "updatedAt" AT TIME ZONE 'UTC';
 
-ALTER TABLE "Subject" ALTER COLUMN "createdAt" SET DATA TYPE TIMESTAMPTZ(3),
-ALTER COLUMN "updatedAt" SET DATA TYPE TIMESTAMPTZ(3);
+ALTER TABLE "Subject"
+  ALTER COLUMN "createdAt" SET DATA TYPE TIMESTAMPTZ(3) USING "createdAt" AT TIME ZONE 'UTC',
+  ALTER COLUMN "updatedAt" SET DATA TYPE TIMESTAMPTZ(3) USING "updatedAt" AT TIME ZONE 'UTC';
 
-ALTER TABLE "Teacher" ALTER COLUMN "createdAt" SET DATA TYPE TIMESTAMPTZ(3),
-ALTER COLUMN "updatedAt" SET DATA TYPE TIMESTAMPTZ(3);
+ALTER TABLE "Teacher"
+  ALTER COLUMN "createdAt" SET DATA TYPE TIMESTAMPTZ(3) USING "createdAt" AT TIME ZONE 'UTC',
+  ALTER COLUMN "updatedAt" SET DATA TYPE TIMESTAMPTZ(3) USING "updatedAt" AT TIME ZONE 'UTC';
 
 CREATE UNIQUE INDEX "Session_enrollmentId_startsAt_key" ON "Session"("enrollmentId", "startsAt");
 
@@ -77,12 +98,14 @@ CREATE UNIQUE INDEX "enrollment_one_active_per_subject_format"
 -- ---------- LedgerEntry ----------
 
 ALTER TABLE "LedgerEntry"
-  DROP CONSTRAINT "ledger_amount_usd_nonnegative",
   DROP CONSTRAINT "ledger_cash_fields";
 
+-- The init migration keeps ledger_amount_usd_nonnegative (>= 0). A CHARGE may be
+-- exactly zero when a discount covers the whole monthly price, but a PAYMENT or
+-- REFUND of zero is meaningless.
 ALTER TABLE "LedgerEntry"
   ADD CONSTRAINT "ledger_amount_usd_positive"
-    CHECK ("amountUsd" > 0),
+    CHECK ("type" = 'CHARGE' OR "amountUsd" > 0),
   ADD CONSTRAINT "ledger_amount_positive"
     CHECK ("amount" IS NULL OR "amount" > 0),
   ADD CONSTRAINT "ledger_receipt_positive"
@@ -120,7 +143,9 @@ ALTER TABLE "LedgerEntry"
 
 ALTER TABLE "Enrollment"
   ADD CONSTRAINT "enrollment_music_sessions_only"
-    CHECK ("type" = 'MUSIC' OR "sessionsPerMonth" IS NULL);
+    CHECK ("type" = 'MUSIC' OR "sessionsPerMonth" IS NULL),
+  ADD CONSTRAINT "enrollment_music_requires_sessions"
+    CHECK ("type" <> 'MUSIC' OR "sessionsPerMonth" IS NOT NULL);
 
 ALTER TABLE "Subject"
   ADD CONSTRAINT "subject_music_sessions_only"
@@ -132,29 +157,29 @@ ALTER TABLE "Subject"
 
 ALTER TABLE "Student"
   ADD CONSTRAINT "student_full_name_nonblank"
-    CHECK (btrim("fullName") <> '');
+    CHECK (btrim("fullName", E' \t\n\r') <> '');
 
 ALTER TABLE "Teacher"
   ADD CONSTRAINT "teacher_full_name_nonblank"
-    CHECK (btrim("fullName") <> '');
+    CHECK (btrim("fullName", E' \t\n\r') <> '');
 
 ALTER TABLE "Subject"
   ADD CONSTRAINT "subject_name_nonblank"
-    CHECK (btrim("name") <> '');
+    CHECK (btrim("name", E' \t\n\r') <> '');
 
 ALTER TABLE "GradeLevel"
   ADD CONSTRAINT "grade_name_nonblank"
-    CHECK (btrim("name") <> '');
+    CHECK (btrim("name", E' \t\n\r') <> '');
 
 ALTER TABLE "Setting"
   ADD CONSTRAINT "setting_key_nonblank"
-    CHECK (btrim("key") <> '');
+    CHECK (btrim("key", E' \t\n\r') <> '');
 
 ALTER TABLE "AdminUser"
   ADD CONSTRAINT "admin_email_nonblank"
-    CHECK (btrim("email"::text) <> ''),
+    CHECK (btrim("email"::text, E' \t\n\r') <> ''),
   ADD CONSTRAINT "admin_name_nonblank"
-    CHECK (btrim("name") <> ''),
+    CHECK (btrim("name", E' \t\n\r') <> ''),
   ADD CONSTRAINT "admin_2fa_requires_secret"
     CHECK (NOT "twoFactorEnabled" OR "totpSecretEncrypted" IS NOT NULL);
 
@@ -162,9 +187,7 @@ ALTER TABLE "AdminUser"
 
 ALTER TABLE "Expense"
   ADD CONSTRAINT "expense_description_nonblank"
-    CHECK (btrim("description") <> ''),
-  ADD CONSTRAINT "expense_teacher_matches_category"
-    CHECK (("category" = 'TEACHER_PAY') = ("teacherId" IS NOT NULL)),
+    CHECK (btrim("description", E' \t\n\r') <> ''),
   ADD CONSTRAINT "expense_currency_consistent"
     CHECK (
       ("currency" = 'USD' AND "amount" = "amountUsd") OR

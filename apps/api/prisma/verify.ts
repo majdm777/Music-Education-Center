@@ -44,6 +44,7 @@ const REQUIRED_CHECK_CONSTRAINTS = [
   'enrollment_education_requires_grade',
   'enrollment_ended_has_end_date',
   'enrollment_music_has_no_grade',
+  'enrollment_music_requires_sessions',
   'enrollment_music_sessions_only',
   'enrollment_price_nonnegative',
   'enrollment_sessions_positive',
@@ -52,7 +53,6 @@ const REQUIRED_CHECK_CONSTRAINTS = [
   'expense_currency_consistent',
   'expense_description_nonblank',
   'expense_rate_positive',
-  'expense_teacher_matches_category',
   'grade_name_nonblank',
   'grade_rate_positive',
   'ledger_amount_positive',
@@ -81,19 +81,79 @@ const REQUIRED_CHECK_CONSTRAINTS = [
 
 // The name proves the constraint exists; these fragments prove it still says
 // what the docs promise. Normalisation removes quoting and whitespace noise.
+// Every required CHECK must have an entry, so a constraint can never be
+// verified by name alone.
 const CHECK_DEFINITION_FRAGMENTS: Record<string, string[]> = {
-  ledger_amount_usd_positive: ['amountusd > (0)::numeric'],
-  ledger_receipt_only_for_payment: ["type = 'payment'", 'receiptnumber is null'],
+  admin_2fa_requires_secret: ['not twofactorenabled', 'totpsecretencrypted is not null'],
+  admin_email_nonblank: ["btrim((email)::text, ' '::text) <> ''::text"],
+  admin_name_nonblank: ["btrim(name, ' '::text) <> ''::text"],
+  enrollment_dates_ordered: ['enddate is null', 'enddate >= startdate'],
+  enrollment_discount_nonnegative: ['discountvalue is null', 'discountvalue >= (0)::numeric'],
+  enrollment_discount_pair: ['(discounttype is null) = (discountvalue is null)'],
+  enrollment_discount_percent_range: [
+    "discounttype <> 'percent'",
+    'discountvalue >= (0)::numeric',
+    'discountvalue <= (100)::numeric',
+  ],
+  enrollment_education_requires_grade: ["type <> 'education'", 'gradelevelid is not null'],
+  enrollment_ended_has_end_date: ["status <> 'ended'", 'enddate is not null'],
+  enrollment_music_has_no_grade: ["type <> 'music'", 'gradelevelid is null'],
+  enrollment_music_requires_sessions: ["type <> 'music'", 'sessionspermonth is not null'],
+  enrollment_music_sessions_only: ["type = 'music'", 'sessionspermonth is null'],
+  enrollment_price_nonnegative: ['monthlyprice >= (0)::numeric'],
+  enrollment_sessions_positive: ['sessionspermonth is null', 'sessionspermonth > 0'],
+  exchange_rate_positive: ['lbpperusd > (0)::numeric'],
+  expense_amounts_nonnegative: ['amount >= (0)::numeric', 'amountusd >= (0)::numeric'],
+  expense_currency_consistent: [
+    'round((amount / lbpperusd), 2)',
+    "currency = 'usd'",
+    "currency = 'lbp'",
+  ],
+  expense_description_nonblank: ["btrim(description, ' '::text) <> ''::text"],
+  expense_rate_positive: ['lbpperusd > (0)::numeric'],
+  grade_name_nonblank: ["btrim(name, ' '::text) <> ''::text"],
+  grade_rate_positive: ['rate > (0)::numeric'],
+  ledger_amount_positive: ['amount is null', 'amount > (0)::numeric'],
+  ledger_amount_usd_nonnegative: ['amountusd >= (0)::numeric'],
+  ledger_amount_usd_positive: ["type = 'charge'", 'amountusd > (0)::numeric'],
+  ledger_cash_fields_only: [
+    "type = any (array['payment'",
+    "'refund'",
+    'amount is null',
+    'currency is null',
+    'lbpperusd is null',
+    'method is null',
+  ],
+  ledger_cash_fields_required: [
+    "type <> all (array['payment'",
+    "'refund'",
+    'amount is not null',
+    'currency is not null',
+    'lbpperusd is not null',
+    'method is not null',
+  ],
+  ledger_charge_requires_period: ["type <> 'charge'", 'periodmonth is not null'],
   ledger_currency_consistent: [
     'round((amount / lbpperusd), 2)',
     "currency = 'usd'",
     "currency = 'lbp'",
   ],
+  ledger_payment_requires_receipt: ["type <> 'payment'", 'receiptnumber is not null'],
   ledger_period_first_day: ['extract(day from periodmonth)'],
-  enrollment_music_sessions_only: ["type = 'music'", 'sessionspermonth is null'],
+  ledger_period_only_for_charge: ["type = 'charge'", 'periodmonth is null'],
+  ledger_rate_positive: ['lbpperusd is null', 'lbpperusd > (0)::numeric'],
+  ledger_receipt_only_for_payment: ["type = 'payment'", 'receiptnumber is null'],
+  ledger_receipt_positive: ['receiptnumber is null', 'receiptnumber > 0'],
+  session_times_ordered: ['endsat > startsat'],
+  setting_key_nonblank: ["btrim(key, ' '::text) <> ''::text"],
+  student_full_name_nonblank: ["btrim(fullname, ' '::text) <> ''::text"],
+  subject_minutes_positive: ['groupminutes > 0', 'oneononeminutes > 0'],
+  subject_music_sessions_only: ["type = 'music'", 'monthlysessions is null'],
+  subject_name_nonblank: ["btrim(name, ' '::text) <> ''::text"],
   subject_one_on_one_at_least_group: ['oneononeprice >= groupprice'],
-  expense_teacher_matches_category: ["category = 'teacher_pay'", 'teacherid is not null'],
-  admin_2fa_requires_secret: ['not twofactorenabled', 'totpsecretencrypted is not null'],
+  subject_prices_nonnegative: ['groupprice >= (0)::numeric', 'oneononeprice >= (0)::numeric'],
+  subject_sessions_positive: ['monthlysessions is null', 'monthlysessions > 0'],
+  teacher_full_name_nonblank: ["btrim(fullname, ' '::text) <> ''::text"],
 };
 
 const REQUIRED_FOREIGN_KEYS: Record<string, string[]> = {
@@ -112,6 +172,38 @@ const DATE_COLUMNS = [
   ['LedgerEntry', 'periodMonth'],
   ['Expense', 'date'],
   ['ExchangeRate', 'effectiveDate'],
+] as const;
+
+// Instants must keep sub-day precision. Checking only for the wrong type would
+// let a column change to `date` and silently drop every time of day.
+const TIMESTAMP_COLUMNS = [
+  ['AdminUser', 'lockedUntil'],
+  ['AdminUser', 'lastLoginAt'],
+  ['AdminUser', 'createdAt'],
+  ['AdminUser', 'updatedAt'],
+  ['Enrollment', 'createdAt'],
+  ['Enrollment', 'updatedAt'],
+  ['ExchangeRate', 'createdAt'],
+  ['ExchangeRate', 'updatedAt'],
+  ['Expense', 'voidedAt'],
+  ['Expense', 'createdAt'],
+  ['Expense', 'updatedAt'],
+  ['GradeLevel', 'createdAt'],
+  ['GradeLevel', 'updatedAt'],
+  ['LedgerEntry', 'voidedAt'],
+  ['LedgerEntry', 'createdAt'],
+  ['LedgerEntry', 'updatedAt'],
+  ['Session', 'startsAt'],
+  ['Session', 'endsAt'],
+  ['Session', 'createdAt'],
+  ['Session', 'updatedAt'],
+  ['Setting', 'updatedAt'],
+  ['Student', 'createdAt'],
+  ['Student', 'updatedAt'],
+  ['Subject', 'createdAt'],
+  ['Subject', 'updatedAt'],
+  ['Teacher', 'createdAt'],
+  ['Teacher', 'updatedAt'],
 ] as const;
 
 function normalize(value: string): string {
@@ -186,9 +278,11 @@ async function main(): Promise<void> {
       continue;
     }
     const fragments = CHECK_DEFINITION_FRAGMENTS[name];
-    if (fragments) {
-      problems.push(...assertFragments(`constraint ${name}`, definition, fragments));
+    if (!fragments) {
+      problems.push(`constraint ${name} has no expected definition to verify`);
+      continue;
     }
+    problems.push(...assertFragments(`constraint ${name}`, definition, fragments));
   }
 
   const foreignKeyMap = new Map(foreignKeys.map((row) => [row.conname, row.definition]));
@@ -208,6 +302,14 @@ async function main(): Promise<void> {
     const dataType = columnMap.get(`${table}.${column}`);
     if (dataType !== 'date') {
       problems.push(`${table}.${column} must be date, found ${dataType ?? 'missing'}`);
+    }
+  }
+  for (const [table, column] of TIMESTAMP_COLUMNS) {
+    const dataType = columnMap.get(`${table}.${column}`);
+    if (dataType !== 'timestamp with time zone') {
+      problems.push(
+        `${table}.${column} must be timestamp with time zone, found ${dataType ?? 'missing'}`,
+      );
     }
   }
   const suspiciousTimestamps = columns.filter(
@@ -239,7 +341,8 @@ async function main(): Promise<void> {
     `Database verified: ${REQUIRED_INDEXES.length} indexes, ` +
       `${REQUIRED_CHECK_CONSTRAINTS.length} check constraints, ` +
       `${Object.keys(REQUIRED_FOREIGN_KEYS).length} foreign keys, ` +
-      `${DATE_COLUMNS.length} date columns, 1 sequence`,
+      `${DATE_COLUMNS.length} date columns, ${TIMESTAMP_COLUMNS.length} timestamp columns, ` +
+      `1 sequence`,
   );
 }
 

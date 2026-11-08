@@ -18,6 +18,19 @@ if (!testUrl) {
   throw new Error('TEST_DATABASE_URL is required. Run pnpm test:integration from the repo root.');
 }
 
+// The beforeEach hook truncates every table. Refuse to build a client unless the
+// database is clearly a test database, so a stray TEST_DATABASE_URL cannot erase
+// development data.
+let testDatabase: string;
+try {
+  testDatabase = new URL(testUrl).pathname.replace(/^\//, '');
+} catch {
+  throw new Error('TEST_DATABASE_URL must be a valid URL.');
+}
+if (!testDatabase.endsWith('_test')) {
+  throw new Error('TEST_DATABASE_URL must point at a database whose name ends with _test.');
+}
+
 const prisma = new PrismaClient({
   datasources: { db: { url: testUrl } },
 });
@@ -176,9 +189,7 @@ async function createLedgerEntry(
   });
 }
 
-async function createExpense(
-  overrides: Partial<Prisma.ExpenseUncheckedCreateInput> = {},
-): Promise<{ id: string }> {
+async function createExpense(overrides: Partial<Prisma.ExpenseUncheckedCreateInput> = {}) {
   return prisma.expense.create({
     data: {
       category: ExpenseCategory.RENT,
@@ -372,6 +383,13 @@ describe('enrollment invariants', () => {
     );
   });
 
+  it('requires a session allowance on a music enrollment', async () => {
+    await rejectsWithConstraint(
+      createEnrollment({ sessionsPerMonth: null }),
+      'enrollment_music_requires_sessions',
+    );
+  });
+
   it('allows only one active enrollment per student, subject, and format', async () => {
     const student = await createStudent();
     const subject = await createSubject();
@@ -461,18 +479,19 @@ describe('session invariants', () => {
 
   it('prevents deleting a teacher who still has sessions', async () => {
     const enrollment = await createEnrollment();
-    await createSession(enrollment.id, enrollment.teacherId);
+    const sessionTeacher = await createTeacher();
+    await createSession(enrollment.id, sessionTeacher.id);
 
-    await expect(prisma.teacher.delete({ where: { id: enrollment.teacherId } })).rejects.toThrow();
+    await expect(prisma.teacher.delete({ where: { id: sessionTeacher.id } })).rejects.toThrow();
   });
 });
 
 describe('ledger invariants', () => {
-  it('rejects a non-positive USD amount', async () => {
+  it('rejects a negative USD amount', async () => {
     const enrollment = await createEnrollment();
     await rejectsWithConstraint(
-      createLedgerEntry(enrollment.id, { amountUsd: '0.00' }),
-      'ledger_amount_usd_positive',
+      createLedgerEntry(enrollment.id, { amountUsd: '-1.00' }),
+      'ledger_amount_usd_nonnegative',
     );
   });
 
@@ -606,6 +625,40 @@ describe('ledger invariants', () => {
     await rejectsAsUnique(createLedgerEntry(enrollment.id));
   });
 
+  it('allows one live charge per month in different months', async () => {
+    const enrollment = await createEnrollment();
+    const november = await createLedgerEntry(enrollment.id);
+    const december = await createLedgerEntry(enrollment.id, {
+      date: isoDate('2026-12-01'),
+      periodMonth: isoDate('2026-12-01'),
+    });
+
+    expect(november.periodMonth).toEqual(isoDate('2026-11-01'));
+    expect(december.periodMonth).toEqual(isoDate('2026-12-01'));
+    expect(november.id).not.toBe(december.id);
+  });
+
+  it('accepts a zero charge when a discount covers the whole price', async () => {
+    const enrollment = await createEnrollment();
+    const charge = await createLedgerEntry(enrollment.id, { amountUsd: '0.00' });
+
+    expect(charge.amountUsd.isZero()).toBe(true);
+  });
+
+  it('rejects a payment whose USD value rounds to zero', async () => {
+    const enrollment = await createEnrollment();
+    await rejectsWithConstraint(
+      createLedgerEntry(enrollment.id, {
+        type: LedgerType.PAYMENT,
+        currency: Currency.LBP,
+        amount: '1.00',
+        lbpPerUsd: '89000.00',
+        amountUsd: '0.00',
+      }),
+      'ledger_amount_usd_positive',
+    );
+  });
+
   it('allows a replacement charge after the first one is voided', async () => {
     const enrollment = await createEnrollment();
     const first = await createLedgerEntry(enrollment.id);
@@ -652,16 +705,16 @@ describe('expense invariants', () => {
     );
   });
 
-  it('requires a teacher only for teacher pay', async () => {
+  it('allows a teacher link on any category and leaves it optional', async () => {
     const teacher = await createTeacher();
-    await rejectsWithConstraint(
-      createExpense({ category: ExpenseCategory.RENT, teacherId: teacher.id }),
-      'expense_teacher_matches_category',
-    );
-    await rejectsWithConstraint(
-      createExpense({ category: ExpenseCategory.TEACHER_PAY, teacherId: null }),
-      'expense_teacher_matches_category',
-    );
+    const rent = await createExpense({ category: ExpenseCategory.RENT, teacherId: teacher.id });
+    const teacherPay = await createExpense({
+      category: ExpenseCategory.TEACHER_PAY,
+      teacherId: null,
+    });
+
+    expect(rent.teacherId).toBe(teacher.id);
+    expect(teacherPay.teacherId).toBeNull();
   });
 
   it('rejects a blank expense description', async () => {
@@ -738,5 +791,55 @@ describe('identity and configuration invariants', () => {
         data: { lbpPerUsd: '90000.00', effectiveDate: isoDate('2026-11-01') },
       }),
     );
+  });
+});
+
+describe('whitespace-only values are rejected', () => {
+  // btrim strips spaces by default, so these values prove the checks also strip
+  // tabs, newlines, and carriage returns.
+  const whitespace = '\t\n\r';
+
+  it('rejects a whitespace-only student name', async () => {
+    await rejectsWithConstraint(
+      createStudent({ fullName: whitespace }),
+      'student_full_name_nonblank',
+    );
+  });
+
+  it('rejects a whitespace-only teacher name', async () => {
+    await rejectsWithConstraint(
+      createTeacher({ fullName: whitespace }),
+      'teacher_full_name_nonblank',
+    );
+  });
+
+  it('rejects a whitespace-only subject name', async () => {
+    await rejectsWithConstraint(createSubject({ name: whitespace }), 'subject_name_nonblank');
+  });
+
+  it('rejects a whitespace-only grade name', async () => {
+    await rejectsWithConstraint(createGrade({ name: whitespace }), 'grade_name_nonblank');
+  });
+
+  it('rejects a whitespace-only setting key', async () => {
+    await rejectsWithConstraint(
+      prisma.setting.create({ data: { key: whitespace, value: {} } }),
+      'setting_key_nonblank',
+    );
+  });
+
+  it('rejects a whitespace-only expense description', async () => {
+    await rejectsWithConstraint(
+      createExpense({ description: whitespace }),
+      'expense_description_nonblank',
+    );
+  });
+
+  it('rejects a whitespace-only admin email', async () => {
+    await rejectsWithConstraint(createAdmin({ email: whitespace }), 'admin_email_nonblank');
+  });
+
+  it('rejects a whitespace-only admin name', async () => {
+    await rejectsWithConstraint(createAdmin({ name: whitespace }), 'admin_name_nonblank');
   });
 });
