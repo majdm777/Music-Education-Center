@@ -5,6 +5,7 @@ import { loadApiEnv } from '@mec/shared';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
 import { AllExceptionsFilter } from './common/all-exceptions.filter';
+import { requestIdMiddleware } from './common/request-id';
 
 async function bootstrap() {
   const env = loadApiEnv();
@@ -12,6 +13,8 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const httpAdapter = app.getHttpAdapter().getInstance();
 
+  // Every request gets a request ID, not only the ones that throw.
+  app.use(requestIdMiddleware);
   httpAdapter.disable('x-powered-by');
   app.use(helmet());
   app.setGlobalPrefix('api');

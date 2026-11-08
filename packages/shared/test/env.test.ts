@@ -14,6 +14,8 @@ const valid = {
 const validProduction = {
   ...valid,
   NODE_ENV: 'production',
+  DATABASE_URL: 'postgresql://user:pass@db.example.com:5432/db',
+  DIRECT_URL: 'postgresql://user:pass@db.example.com:5432/db',
   WEB_ORIGIN: 'https://center.example.com',
   JWT_SECRET: 'a'.repeat(64),
 };
@@ -48,6 +50,14 @@ describe('apiEnvSchema', () => {
     expect(result.success).toBe(false);
   });
 
+  it('reports a malformed database URL instead of throwing', () => {
+    const result = apiEnvSchema.safeParse({ ...valid, DATABASE_URL: 'not a url' });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues.some((issue) => issue.path[0] === 'DATABASE_URL')).toBe(true);
+    }
+  });
+
   it('accepts a production environment with HTTPS and a real secret', () => {
     expect(apiEnvSchema.safeParse(validProduction).success).toBe(true);
   });
@@ -64,6 +74,30 @@ describe('apiEnvSchema', () => {
     const result = apiEnvSchema.safeParse({
       ...validProduction,
       WEB_ORIGIN: 'https://localhost:3000',
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects the bracketed IPv6 loopback origin in production', () => {
+    const result = apiEnvSchema.safeParse({
+      ...validProduction,
+      WEB_ORIGIN: 'https://[::1]:3000',
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects a localhost database in production', () => {
+    const result = apiEnvSchema.safeParse({
+      ...validProduction,
+      DATABASE_URL: 'postgresql://user:pass@localhost:5432/db',
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects the public CI TOTP key in production', () => {
+    const result = apiEnvSchema.safeParse({
+      ...validProduction,
+      TOTP_ENCRYPTION_KEY: '6SYtapbzpbiVVwVJMv9++vmNsgyy6QER4xel4dYpB2I=',
     });
     expect(result.success).toBe(false);
   });
@@ -100,6 +134,14 @@ describe('webEnvSchema', () => {
     if (result.success) {
       expect(result.data.API_URL).toBe('https://api.example.com');
     }
+  });
+
+  it('rejects a non-HTTP API_URL', () => {
+    const result = webEnvSchema.safeParse({
+      NODE_ENV: 'production',
+      API_URL: 'ftp://api.example.com',
+    });
+    expect(result.success).toBe(false);
   });
 });
 

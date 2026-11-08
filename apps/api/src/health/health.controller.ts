@@ -1,8 +1,10 @@
 import { Controller, Get, ServiceUnavailableException } from '@nestjs/common';
-import { SkipThrottle } from '@nestjs/throttler';
+import { Throttle } from '@nestjs/throttler';
 import { PrismaService } from '../prisma/prisma.service';
 
-@SkipThrottle()
+// Health checks hit a database query, so they are rate-limited too. The bound is
+// higher than the default so a load balancer polling once a second never trips it.
+@Throttle({ default: { limit: 300, ttl: 60_000 } })
 @Controller('health')
 export class HealthController {
   constructor(private readonly prisma: PrismaService) {}

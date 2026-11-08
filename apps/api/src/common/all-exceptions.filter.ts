@@ -7,9 +7,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import type { Request, Response } from 'express';
-import { randomUUID } from 'node:crypto';
-
-const REQUEST_ID_PATTERN = /^[A-Za-z0-9._-]{1,64}$/;
+import { isRequestId, REQUEST_ID_HEADER, resolveRequestId } from './request-id';
 
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {
@@ -20,12 +18,11 @@ export class AllExceptionsFilter implements ExceptionFilter {
     const request = context.getRequest<Request>();
     const response = context.getResponse<Response>();
 
-    const incomingRequestId = request.header('x-request-id');
-    const requestId =
-      incomingRequestId && REQUEST_ID_PATTERN.test(incomingRequestId)
-        ? incomingRequestId
-        : randomUUID();
-    response.setHeader('x-request-id', requestId);
+    // The middleware already set the ID for this response. Reuse it so the
+    // error body, the response header and the log line always agree.
+    const headerId = response.getHeader(REQUEST_ID_HEADER);
+    const requestId = isRequestId(headerId) ? headerId : resolveRequestId(request);
+    response.setHeader(REQUEST_ID_HEADER, requestId);
 
     if (exception instanceof HttpException) {
       const status = exception.getStatus();
