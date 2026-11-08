@@ -95,7 +95,13 @@ export const apiEnvSchema = z
       });
     }
     for (const field of ['DATABASE_URL', 'DIRECT_URL'] as const) {
-      const hostname = new URL(env[field]).hostname;
+      let hostname: string;
+      try {
+        hostname = new URL(env[field]).hostname;
+      } catch {
+        // The field schema already reports malformed URLs.
+        continue;
+      }
       if (LOCAL_HOSTNAMES.has(hostname)) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
@@ -111,7 +117,7 @@ export const apiEnvSchema = z
         message: 'JWT_SECRET still looks like a placeholder',
       });
     }
-    if (KNOWN_TEST_SECRETS.has(env.TOTP_ENCRYPTION_KEY)) {
+    if (KNOWN_TEST_SECRETS.has(Buffer.from(env.TOTP_ENCRYPTION_KEY, 'base64').toString('base64'))) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['TOTP_ENCRYPTION_KEY'],

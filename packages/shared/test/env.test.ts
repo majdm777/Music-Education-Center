@@ -50,11 +50,13 @@ describe('apiEnvSchema', () => {
     expect(result.success).toBe(false);
   });
 
-  it('reports a malformed database URL instead of throwing', () => {
-    const result = apiEnvSchema.safeParse({ ...valid, DATABASE_URL: 'not a url' });
-    expect(result.success).toBe(false);
-    if (!result.success) {
-      expect(result.error.issues.some((issue) => issue.path[0] === 'DATABASE_URL')).toBe(true);
+  it.each([valid, validProduction])('reports malformed database URLs in $NODE_ENV', (env) => {
+    for (const field of ['DATABASE_URL', 'DIRECT_URL']) {
+      const result = apiEnvSchema.safeParse({ ...env, [field]: 'not a url' });
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.issues.some((issue) => issue.path[0] === field)).toBe(true);
+      }
     }
   });
 
@@ -94,10 +96,13 @@ describe('apiEnvSchema', () => {
     expect(result.success).toBe(false);
   });
 
-  it('rejects the public CI TOTP key in production', () => {
+  it.each([
+    '6SYtapbzpbiVVwVJMv9++vmNsgyy6QER4xel4dYpB2I=',
+    '6SYtapbzpbiVVwVJMv9++vmNsgyy6QER4xel4dYpB2I',
+  ])('rejects the public CI TOTP key in production (%s)', (key) => {
     const result = apiEnvSchema.safeParse({
       ...validProduction,
-      TOTP_ENCRYPTION_KEY: '6SYtapbzpbiVVwVJMv9++vmNsgyy6QER4xel4dYpB2I=',
+      TOTP_ENCRYPTION_KEY: key,
     });
     expect(result.success).toBe(false);
   });

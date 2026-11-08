@@ -157,29 +157,29 @@ ALTER TABLE "Subject"
 
 ALTER TABLE "Student"
   ADD CONSTRAINT "student_full_name_nonblank"
-    CHECK (btrim("fullName", E' \t\n\r') <> '');
+    CHECK (btrim("fullName", E' \t\n\r\f\u000b\u00a0\u1680\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a\u2028\u2029\u202f\u205f\u3000\ufeff') <> '');
 
 ALTER TABLE "Teacher"
   ADD CONSTRAINT "teacher_full_name_nonblank"
-    CHECK (btrim("fullName", E' \t\n\r') <> '');
+    CHECK (btrim("fullName", E' \t\n\r\f\u000b\u00a0\u1680\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a\u2028\u2029\u202f\u205f\u3000\ufeff') <> '');
 
 ALTER TABLE "Subject"
   ADD CONSTRAINT "subject_name_nonblank"
-    CHECK (btrim("name", E' \t\n\r') <> '');
+    CHECK (btrim("name", E' \t\n\r\f\u000b\u00a0\u1680\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a\u2028\u2029\u202f\u205f\u3000\ufeff') <> '');
 
 ALTER TABLE "GradeLevel"
   ADD CONSTRAINT "grade_name_nonblank"
-    CHECK (btrim("name", E' \t\n\r') <> '');
+    CHECK (btrim("name", E' \t\n\r\f\u000b\u00a0\u1680\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a\u2028\u2029\u202f\u205f\u3000\ufeff') <> '');
 
 ALTER TABLE "Setting"
   ADD CONSTRAINT "setting_key_nonblank"
-    CHECK (btrim("key", E' \t\n\r') <> '');
+    CHECK (btrim("key", E' \t\n\r\f\u000b\u00a0\u1680\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a\u2028\u2029\u202f\u205f\u3000\ufeff') <> '');
 
 ALTER TABLE "AdminUser"
   ADD CONSTRAINT "admin_email_nonblank"
-    CHECK (btrim("email"::text, E' \t\n\r') <> ''),
+    CHECK (btrim("email"::text, E' \t\n\r\f\u000b\u00a0\u1680\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a\u2028\u2029\u202f\u205f\u3000\ufeff') <> ''),
   ADD CONSTRAINT "admin_name_nonblank"
-    CHECK (btrim("name", E' \t\n\r') <> ''),
+    CHECK (btrim("name", E' \t\n\r\f\u000b\u00a0\u1680\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a\u2028\u2029\u202f\u205f\u3000\ufeff') <> ''),
   ADD CONSTRAINT "admin_2fa_requires_secret"
     CHECK (NOT "twoFactorEnabled" OR "totpSecretEncrypted" IS NOT NULL);
 
@@ -187,7 +187,7 @@ ALTER TABLE "AdminUser"
 
 ALTER TABLE "Expense"
   ADD CONSTRAINT "expense_description_nonblank"
-    CHECK (btrim("description", E' \t\n\r') <> ''),
+    CHECK (btrim("description", E' \t\n\r\f\u000b\u00a0\u1680\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a\u2028\u2029\u202f\u205f\u3000\ufeff') <> ''),
   ADD CONSTRAINT "expense_currency_consistent"
     CHECK (
       ("currency" = 'USD' AND "amount" = "amountUsd") OR

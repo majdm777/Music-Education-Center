@@ -659,6 +659,20 @@ describe('ledger invariants', () => {
     );
   });
 
+  it('rejects a refund whose USD value rounds to zero', async () => {
+    const enrollment = await createEnrollment();
+    await rejectsWithConstraint(
+      createLedgerEntry(enrollment.id, {
+        type: LedgerType.REFUND,
+        currency: Currency.LBP,
+        amount: '1.00',
+        lbpPerUsd: '89000.00',
+        amountUsd: '0.00',
+      }),
+      'ledger_amount_usd_positive',
+    );
+  });
+
   it('allows a replacement charge after the first one is voided', async () => {
     const enrollment = await createEnrollment();
     const first = await createLedgerEntry(enrollment.id);
@@ -841,5 +855,52 @@ describe('whitespace-only values are rejected', () => {
 
   it('rejects a whitespace-only admin name', async () => {
     await rejectsWithConstraint(createAdmin({ name: whitespace }), 'admin_name_nonblank');
+  });
+});
+
+// Match String.trim(): ECMAScript WhiteSpace and LineTerminator characters.
+const blankCharacters = [
+  ' ',
+  '\t',
+  '\n',
+  '\r',
+  '\x0c',
+  '\x0b',
+  '\u00a0',
+  '\u1680',
+  '\u2000',
+  '\u2001',
+  '\u2002',
+  '\u2003',
+  '\u2004',
+  '\u2005',
+  '\u2006',
+  '\u2007',
+  '\u2008',
+  '\u2009',
+  '\u200a',
+  '\u2028',
+  '\u2029',
+  '\u202f',
+  '\u205f',
+  '\u3000',
+  '\ufeff',
+];
+describe('nonblank text whitespace', () => {
+  it.each(blankCharacters)('rejects whitespace U+%s in every nonblank field', async (blank) => {
+    await rejectsWithConstraint(createStudent({ fullName: blank }), 'student_full_name_nonblank');
+    await rejectsWithConstraint(createTeacher({ fullName: blank }), 'teacher_full_name_nonblank');
+    await rejectsWithConstraint(createSubject({ name: blank }), 'subject_name_nonblank');
+    await rejectsWithConstraint(createGrade({ name: blank }), 'grade_name_nonblank');
+    await rejectsWithConstraint(
+      createExpense({ description: blank }),
+      'expense_description_nonblank',
+    );
+    await rejectsWithConstraint(createAdmin({ name: blank }), 'admin_name_nonblank');
+    await rejectsWithConstraint(createAdmin({ email: blank }), 'admin_email_nonblank');
+    await rejectsWithConstraint(
+      prisma.setting.create({ data: { key: blank, value: {} } }),
+      'setting_key_nonblank',
+    );
   });
 });

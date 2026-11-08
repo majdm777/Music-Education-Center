@@ -19,7 +19,7 @@
     "build:shared": "pnpm --filter @mec/shared build",
     "lint": "eslint .",
     "typecheck": "pnpm db:generate && pnpm build:shared && pnpm -r --if-present typecheck",
-    "test": "pnpm build:shared && pnpm -r --if-present test",
+    "test": "node --test scripts/*.test.mjs && pnpm build:shared && pnpm -r --if-present test",
     "test:coverage": "pnpm build:shared && pnpm -r --if-present test:coverage",
     "test:integration": "node scripts/run-integration-tests.mjs",
     "format": "prettier --write .",

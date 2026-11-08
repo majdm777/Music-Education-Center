@@ -565,28 +565,45 @@ ALTER TABLE "ExchangeRate"
 
 ### 4.7 Identity constraints
 
-`btrim` strips spaces by default, so every nonblank check also strips tabs,
-newlines, and carriage returns. A value made only of whitespace is rejected.
+<!-- coderabbit-ai-generated:v1 -->
+
+<!-- coderabbit-ai-generated-section:v1:fe13ae398160591e55f376bfabc09f6249fecb2dfecc77fe5e0f23f9478714a4 -->
+
+Nonblank checks reject the ECMAScript `String.trim()` whitespace set: U+0009–U+000D, U+0020, U+00A0, U+1680, U+2000–U+200A, U+2028, U+2029, U+202F, U+205F, U+3000, and U+FEFF. This includes form feed and nonbreaking spaces. Zero-width space (U+200B) is not whitespace in this set.
+
+<!-- /coderabbit-ai-generated:v1 -->
+
+<!-- coderabbit-ai-generated:v1 -->
+
+<!-- coderabbit-ai-generated-section:v1:50f3c0e24478cd43881362473bf609ef4c92892e5086056fe51bd373e1a0ad93 -->
+
+<!-- coderabbit-ai-generated:v1 -->
+
+<!-- coderabbit-ai-generated-section:v1:fc26230e73e060915e38aa9dac9eb5af2a9d40508dfe07ccafd93dc90d7d5627 -->
 
 ```sql
 ALTER TABLE "Student"
-  ADD CONSTRAINT "student_full_name_nonblank" CHECK (btrim("fullName", E' \t\n\r') <> '');
+  ADD CONSTRAINT "student_full_name_nonblank" CHECK (btrim("fullName", E' \t\n\r\f\u000b\u00a0\u1680\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a\u2028\u2029\u202f\u205f\u3000\ufeff') <> '');
 ALTER TABLE "Teacher"
-  ADD CONSTRAINT "teacher_full_name_nonblank" CHECK (btrim("fullName", E' \t\n\r') <> '');
+  ADD CONSTRAINT "teacher_full_name_nonblank" CHECK (btrim("fullName", E' \t\n\r\f\u000b\u00a0\u1680\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a\u2028\u2029\u202f\u205f\u3000\ufeff') <> '');
 ALTER TABLE "Subject"
-  ADD CONSTRAINT "subject_name_nonblank" CHECK (btrim("name", E' \t\n\r') <> '');
+  ADD CONSTRAINT "subject_name_nonblank" CHECK (btrim("name", E' \t\n\r\f\u000b\u00a0\u1680\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a\u2028\u2029\u202f\u205f\u3000\ufeff') <> '');
 ALTER TABLE "GradeLevel"
-  ADD CONSTRAINT "grade_name_nonblank" CHECK (btrim("name", E' \t\n\r') <> '');
+  ADD CONSTRAINT "grade_name_nonblank" CHECK (btrim("name", E' \t\n\r\f\u000b\u00a0\u1680\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a\u2028\u2029\u202f\u205f\u3000\ufeff') <> '');
 ALTER TABLE "Setting"
-  ADD CONSTRAINT "setting_key_nonblank" CHECK (btrim("key", E' \t\n\r') <> '');
+  ADD CONSTRAINT "setting_key_nonblank" CHECK (btrim("key", E' \t\n\r\f\u000b\u00a0\u1680\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a\u2028\u2029\u202f\u205f\u3000\ufeff') <> '');
 ALTER TABLE "Expense"
-  ADD CONSTRAINT "expense_description_nonblank" CHECK (btrim("description", E' \t\n\r') <> '');
+  ADD CONSTRAINT "expense_description_nonblank" CHECK (btrim("description", E' \t\n\r\f\u000b\u00a0\u1680\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a\u2028\u2029\u202f\u205f\u3000\ufeff') <> '');
 ALTER TABLE "AdminUser"
-  ADD CONSTRAINT "admin_email_nonblank" CHECK (btrim("email"::text, E' \t\n\r') <> ''),
-  ADD CONSTRAINT "admin_name_nonblank" CHECK (btrim("name", E' \t\n\r') <> ''),
+  ADD CONSTRAINT "admin_email_nonblank" CHECK (btrim("email"::text, E' \t\n\r\f\u000b\u00a0\u1680\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a\u2028\u2029\u202f\u205f\u3000\ufeff') <> ''),
+  ADD CONSTRAINT "admin_name_nonblank" CHECK (btrim("name", E' \t\n\r\f\u000b\u00a0\u1680\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a\u2028\u2029\u202f\u205f\u3000\ufeff') <> ''),
   ADD CONSTRAINT "admin_2fa_requires_secret"
     CHECK (NOT "twoFactorEnabled" OR "totpSecretEncrypted" IS NOT NULL);
 ```
+
+<!-- /coderabbit-ai-generated:v1 -->
+
+<!-- /coderabbit-ai-generated:v1 -->
 
 ### 4.8 Receipt numbers
 

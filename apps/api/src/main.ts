@@ -23,6 +23,7 @@ async function bootstrap() {
     credentials: true,
     methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE'],
     maxAge: 600,
+    exposedHeaders: ['x-request-id'],
   });
   app.useGlobalPipes(
     new ValidationPipe({

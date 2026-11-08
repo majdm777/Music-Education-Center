@@ -56,6 +56,7 @@ const REQUIRED_CHECK_CONSTRAINTS = [
   'grade_name_nonblank',
   'grade_rate_positive',
   'ledger_amount_positive',
+  'ledger_amount_usd_nonnegative',
   'ledger_amount_usd_positive',
   'ledger_cash_fields_only',
   'ledger_cash_fields_required',
@@ -85,8 +86,12 @@ const REQUIRED_CHECK_CONSTRAINTS = [
 // verified by name alone.
 const CHECK_DEFINITION_FRAGMENTS: Record<string, string[]> = {
   admin_2fa_requires_secret: ['not twofactorenabled', 'totpsecretencrypted is not null'],
-  admin_email_nonblank: ["btrim((email)::text, ' '::text) <> ''::text"],
-  admin_name_nonblank: ["btrim(name, ' '::text) <> ''::text"],
+  admin_email_nonblank: [
+    "btrim((email)::text, ' \t\n\r\f\u000b\u00a0\u1680\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a\u2028\u2029\u202f\u205f\u3000\ufeff'::text) <> ''::text",
+  ],
+  admin_name_nonblank: [
+    "btrim(name, ' \t\n\r\f\u000b\u00a0\u1680\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a\u2028\u2029\u202f\u205f\u3000\ufeff'::text) <> ''::text",
+  ],
   enrollment_dates_ordered: ['enddate is null', 'enddate >= startdate'],
   enrollment_discount_nonnegative: ['discountvalue is null', 'discountvalue >= (0)::numeric'],
   enrollment_discount_pair: ['(discounttype is null) = (discountvalue is null)'],
@@ -109,9 +114,13 @@ const CHECK_DEFINITION_FRAGMENTS: Record<string, string[]> = {
     "currency = 'usd'",
     "currency = 'lbp'",
   ],
-  expense_description_nonblank: ["btrim(description, ' '::text) <> ''::text"],
+  expense_description_nonblank: [
+    "btrim(description, ' \t\n\r\f\u000b\u00a0\u1680\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a\u2028\u2029\u202f\u205f\u3000\ufeff'::text) <> ''::text",
+  ],
   expense_rate_positive: ['lbpperusd > (0)::numeric'],
-  grade_name_nonblank: ["btrim(name, ' '::text) <> ''::text"],
+  grade_name_nonblank: [
+    "btrim(name, ' \t\n\r\f\u000b\u00a0\u1680\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a\u2028\u2029\u202f\u205f\u3000\ufeff'::text) <> ''::text",
+  ],
   grade_rate_positive: ['rate > (0)::numeric'],
   ledger_amount_positive: ['amount is null', 'amount > (0)::numeric'],
   ledger_amount_usd_nonnegative: ['amountusd >= (0)::numeric'],
@@ -145,15 +154,23 @@ const CHECK_DEFINITION_FRAGMENTS: Record<string, string[]> = {
   ledger_receipt_only_for_payment: ["type = 'payment'", 'receiptnumber is null'],
   ledger_receipt_positive: ['receiptnumber is null', 'receiptnumber > 0'],
   session_times_ordered: ['endsat > startsat'],
-  setting_key_nonblank: ["btrim(key, ' '::text) <> ''::text"],
-  student_full_name_nonblank: ["btrim(fullname, ' '::text) <> ''::text"],
+  setting_key_nonblank: [
+    "btrim(key, ' \t\n\r\f\u000b\u00a0\u1680\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a\u2028\u2029\u202f\u205f\u3000\ufeff'::text) <> ''::text",
+  ],
+  student_full_name_nonblank: [
+    "btrim(fullname, ' \t\n\r\f\u000b\u00a0\u1680\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a\u2028\u2029\u202f\u205f\u3000\ufeff'::text) <> ''::text",
+  ],
   subject_minutes_positive: ['groupminutes > 0', 'oneononeminutes > 0'],
   subject_music_sessions_only: ["type = 'music'", 'monthlysessions is null'],
-  subject_name_nonblank: ["btrim(name, ' '::text) <> ''::text"],
+  subject_name_nonblank: [
+    "btrim(name, ' \t\n\r\f\u000b\u00a0\u1680\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a\u2028\u2029\u202f\u205f\u3000\ufeff'::text) <> ''::text",
+  ],
   subject_one_on_one_at_least_group: ['oneononeprice >= groupprice'],
   subject_prices_nonnegative: ['groupprice >= (0)::numeric', 'oneononeprice >= (0)::numeric'],
   subject_sessions_positive: ['monthlysessions is null', 'monthlysessions > 0'],
-  teacher_full_name_nonblank: ["btrim(fullname, ' '::text) <> ''::text"],
+  teacher_full_name_nonblank: [
+    "btrim(fullname, ' \t\n\r\f\u000b\u00a0\u1680\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a\u2028\u2029\u202f\u205f\u3000\ufeff'::text) <> ''::text",
+  ],
 };
 
 const REQUIRED_FOREIGN_KEYS: Record<string, string[]> = {
@@ -207,7 +224,12 @@ const TIMESTAMP_COLUMNS = [
 ] as const;
 
 function normalize(value: string): string {
-  return value.toLowerCase().replace(/"/g, '').replace(/\s+/g, ' ').trim();
+  return value
+    .toLowerCase()
+    .split(/('(?:''|[^'])*')/)
+    .map((part, index) => (index % 2 === 1 ? part : part.replace(/"/g, '').replace(/\s+/g, ' ')))
+    .join('')
+    .trim();
 }
 
 function assertFragments(label: string, definition: string, fragments: string[]): string[] {

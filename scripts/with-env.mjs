@@ -3,6 +3,10 @@ import { spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { config } from 'dotenv';
+import { createRequire } from 'node:module';
+import { windowsPnpmArgs } from './windows-command.mjs';
+
+const require = createRequire(import.meta.url);
 
 // Load the repo-root .env when it exists. In CI the variables are already set,
 // so a missing file is not an error.
@@ -13,16 +17,11 @@ if (existsSync(envFile)) {
 
 const [command, ...args] = process.argv.slice(2);
 
-// Only the tooling commands used by package.json are allowed. On POSIX the
-// command is never passed to a shell, so a caller cannot inject a second
-// command. Windows needs a shell to launch the .cmd shims for pnpm and tsx.
-const useShell = process.platform === 'win32';
-
 function start(executable, commandArgs) {
   const child = spawn(executable, commandArgs, {
     stdio: 'inherit',
     env: process.env,
-    shell: useShell,
+    shell: false,
   });
 
   child.on('error', (error) => {
@@ -41,13 +40,17 @@ function start(executable, commandArgs) {
 
 switch (command) {
   case 'pnpm':
-    start('pnpm', args);
+    if (process.platform === 'win32') {
+      start(process.execPath, windowsPnpmArgs(args));
+    } else {
+      start('pnpm', args);
+    }
     break;
   case 'node':
-    start('node', args);
+    start(process.execPath, args);
     break;
   case 'tsx':
-    start('tsx', args);
+    start(process.execPath, [require.resolve('tsx/cli'), ...args]);
     break;
   default:
     console.error('Usage: node scripts/with-env.mjs <pnpm|node|tsx> [...args]');
