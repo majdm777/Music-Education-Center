@@ -9,8 +9,9 @@ Google Fonts.
 - Integrity: `sha512-u8wIS6szLAOFvlBjCFZmtpKIqbhuIuniG2N0J+sio8vV6INH58hP0t0QNYrSl9SZtCv2Fwb4oQGuZJY3kJ4+QA==`
 - Files: the unmodified `fonts/complete/woff2/IBMPlexSansArabic-*.woff2` files
   for weights 400, 500, 600 and 700
-- License: SIL Open Font License 1.1, see [OFL.txt](OFL.txt)
+- License: SIL Open Font License 1.1. The license ships with the deployed site
+  at `/fonts/OFL.txt`, from `apps/web/public/fonts/OFL.txt`.
 
 To update, download the pinned tarball, copy the four `woff2` files and
-`LICENSE.txt` (as `OFL.txt`), and verify the weights still match
+`LICENSE.txt` (as `public/fonts/OFL.txt`), and verify the weights still match
 `apps/web/src/app/layout.tsx`.
