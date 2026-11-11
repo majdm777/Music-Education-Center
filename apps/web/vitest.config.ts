@@ -11,7 +11,7 @@ export default defineConfig({
     jsx: 'automatic',
   },
   test: {
-    include: ['test/**/*.test.tsx'],
+    include: ['test/**/*.test.{ts,tsx}'],
     environment: 'node',
     coverage: {
       provider: 'v8',

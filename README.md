@@ -47,6 +47,8 @@ Then:
 - API health: <http://localhost:3001/api/health>
 - The web page fetches `/api/health` through the Next.js rewrite, so a green card proves the browser-to-web-to-API path.
 
+IBM Plex Sans Arabic is vendored in `apps/web/src/fonts` under the SIL Open Font License, so builds never fetch fonts from Google.
+
 The seed creates the admin only if it is missing. Re-running it never resets the password or overwrites edited settings.
 
 ## Scripts
