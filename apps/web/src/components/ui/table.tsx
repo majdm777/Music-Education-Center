@@ -23,9 +23,10 @@ export function Table({ className, scrollLabel, ...props }: TableProps) {
     <div
       role="region"
       aria-label={scrollLabel}
-      // NOSONAR: WCAG 2.1.1 requires a scrollable region to be keyboard
-      // focusable. The container is not a click target; Sonar's S6845 only
-      // sees a non-interactive element and cannot check the scroll behaviour.
+      // WCAG 2.1.1 requires a scrollable region to be keyboard focusable. The
+      // tab stop is deliberate: Sonar rule S6845 is excluded for this file in
+      // sonar-project.properties because it only sees a non-interactive
+      // element and cannot check scroll behaviour.
       tabIndex={0}
       className="w-full overflow-x-auto rounded-lg border border-line"
     >
