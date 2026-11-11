@@ -148,6 +148,20 @@ describe('webEnvSchema', () => {
     });
     expect(result.success).toBe(false);
   });
+
+  it('accepts the style guide opt-in and rejects any other value', () => {
+    const enabled = webEnvSchema.safeParse({
+      NODE_ENV: 'development',
+      STYLE_GUIDE_ENABLED: 'true',
+    });
+    const misspelled = webEnvSchema.safeParse({
+      NODE_ENV: 'development',
+      STYLE_GUIDE_ENABLED: 'yes',
+    });
+
+    expect(enabled.success).toBe(true);
+    expect(misspelled.success).toBe(false);
+  });
 });
 
 describe('loadApiEnv', () => {

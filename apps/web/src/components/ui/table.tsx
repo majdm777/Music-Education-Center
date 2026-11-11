@@ -6,9 +6,26 @@ import type {
 } from 'react';
 import { cn } from '@/lib/utils';
 
-export function Table({ className, ...props }: TableHTMLAttributes<HTMLTableElement>) {
+export interface TableProps extends TableHTMLAttributes<HTMLTableElement> {
+  /**
+   * Accessible name for the scroll region, for example "November payments".
+   * Name every table that can overflow so the focusable container is not an
+   * anonymous tab stop.
+   */
+  scrollLabel?: string;
+}
+
+export function Table({ className, scrollLabel, ...props }: TableProps) {
   return (
-    <div className="w-full overflow-x-auto rounded-lg border border-line">
+    // Focusable so a keyboard user can scroll a table wider than the viewport.
+    // Without a name the region is not exposed as a landmark, which keeps
+    // unnamed tables from cluttering the landmark list.
+    <div
+      role="region"
+      aria-label={scrollLabel}
+      tabIndex={0}
+      className="w-full overflow-x-auto rounded-lg border border-line"
+    >
       <table className={cn('w-full caption-bottom text-sm', className)} {...props} />
     </div>
   );

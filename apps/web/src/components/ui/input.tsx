@@ -1,4 +1,5 @@
 import { forwardRef, type InputHTMLAttributes } from 'react';
+import { isControlInvalid } from '@/lib/form';
 import { cn } from '@/lib/utils';
 
 export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
@@ -17,7 +18,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
         'placeholder:text-ink-muted/70',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-surface',
         'disabled:cursor-not-allowed disabled:bg-surface-muted disabled:opacity-70',
-        (invalid || props['aria-invalid'] === true || props['aria-invalid'] === 'true') &&
+        isControlInvalid(invalid, props['aria-invalid']) &&
           'border-danger focus-visible:ring-danger',
         className,
       )}

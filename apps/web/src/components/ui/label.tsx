@@ -2,6 +2,11 @@ import { forwardRef, type LabelHTMLAttributes, type ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 
 export interface LabelProps extends LabelHTMLAttributes<HTMLLabelElement> {
+  /**
+   * Shows a decorative required marker. The asterisk is hidden from assistive
+   * technology, so the labelled control must also carry `required` or
+   * `aria-required`; `FormField` wires that automatically.
+   */
   required?: boolean;
   children?: ReactNode;
 }

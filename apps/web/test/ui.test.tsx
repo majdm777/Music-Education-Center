@@ -31,11 +31,28 @@ import {
   badgeVariants,
   buttonVariants,
 } from '@/components/ui';
+import { isControlInvalid } from '@/lib/form';
 import { cn } from '@/lib/utils';
 
 describe('cn', () => {
   it('merges conditional and conflicting classes', () => {
     expect(cn('px-2', undefined, 'px-4')).toBe('px-4');
+  });
+});
+
+describe('isControlInvalid', () => {
+  it('treats grammar, spelling and true values as invalid', () => {
+    expect(isControlInvalid(undefined, 'grammar')).toBe(true);
+    expect(isControlInvalid(undefined, 'spelling')).toBe(true);
+    expect(isControlInvalid(false, 'true')).toBe(true);
+    expect(isControlInvalid(true, undefined)).toBe(true);
+  });
+
+  it('does not flag absent or explicitly valid values', () => {
+    expect(isControlInvalid(undefined, undefined)).toBe(false);
+    expect(isControlInvalid(false, undefined)).toBe(false);
+    expect(isControlInvalid(undefined, 'false')).toBe(false);
+    expect(isControlInvalid(undefined, false)).toBe(false);
   });
 });
 
@@ -78,6 +95,22 @@ describe('text controls', () => {
     expect(html).toContain('border-danger');
   });
 
+  it('styles grammar and spelling invalid values as errors', () => {
+    const grammar = renderToStaticMarkup(<Input aria-invalid="grammar" defaultValue="Layla" />);
+    const spelling = renderToStaticMarkup(<Textarea aria-invalid="spelling" />);
+
+    expect(grammar).toContain('aria-invalid="grammar"');
+    expect(grammar).toContain('border-danger');
+    expect(spelling).toContain('border-danger');
+  });
+
+  it('does not style an explicitly valid control as an error', () => {
+    const html = renderToStaticMarkup(<Input aria-invalid="false" defaultValue="Layla" />);
+
+    expect(html).toContain('aria-invalid="false"');
+    expect(html).not.toContain('border-danger');
+  });
+
   it('renders a textarea and mirrors the invalid state', () => {
     const html = renderToStaticMarkup(<Textarea invalid defaultValue="Notes" />);
 
@@ -108,6 +141,17 @@ describe('text controls', () => {
     expect(html.match(/dir="rtl"/g)).toHaveLength(2);
   });
 
+  it('marks a select invalid for spelling and grammar values', () => {
+    const html = renderToStaticMarkup(
+      <Select aria-invalid="spelling" aria-label="Format" defaultValue="group">
+        <option value="group">Group</option>
+      </Select>,
+    );
+
+    expect(html).toContain('aria-invalid="spelling"');
+    expect(html).toContain('border-danger');
+  });
+
   it('renders a native checkbox and a required label', () => {
     const html = renderToStaticMarkup(
       <>
@@ -122,6 +166,7 @@ describe('text controls', () => {
     expect(html).toContain('accent-brand');
     expect(html).toContain('for="reminder"');
     expect(html).toContain('*');
+    expect(html).toContain('aria-hidden="true"');
   });
 });
 
@@ -290,5 +335,28 @@ describe('Table', () => {
     expect(html).toContain('Sample data');
     expect(html).toContain('Layla');
     expect(html).toContain('Total');
+  });
+
+  it('makes the scroll container focusable and names it when asked', () => {
+    const html = renderToStaticMarkup(
+      <Table scrollLabel="November payments">
+        <TableBody>
+          <TableRow>
+            <TableCell>1</TableCell>
+          </TableRow>
+        </TableBody>
+      </Table>,
+    );
+
+    expect(html).toContain('role="region"');
+    expect(html).toContain('tabindex="0"');
+    expect(html).toContain('aria-label="November payments"');
+  });
+
+  it('keeps an unnamed table focusable without an accessible name', () => {
+    const html = renderToStaticMarkup(<Table />);
+
+    expect(html).toContain('tabindex="0"');
+    expect(html).not.toContain('aria-label');
   });
 });

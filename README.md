@@ -43,7 +43,7 @@ pnpm dev            # web on :3000, API on :3001
 Then:
 
 - Web: <http://localhost:3000>
-- UI kit style guide: <http://localhost:3000/style-guide> (development only; returns 404 in production)
+- UI kit style guide: <http://localhost:3000/style-guide> (development only; other environments return 404 unless `STYLE_GUIDE_ENABLED=true`)
 - API health: <http://localhost:3001/api/health>
 - The web page fetches `/api/health` through the Next.js rewrite, so a green card proves the browser-to-web-to-API path.
 
