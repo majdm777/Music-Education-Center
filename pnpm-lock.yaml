@@ -116,9 +116,6 @@ importers:
       '@mec/shared':
         specifier: workspace:^
         version: link:../../packages/shared
-      '@tailwindcss/postcss':
-        specifier: ^4
-        version: 4.3.5
       class-variance-authority:
         specifier: ^0.7.1
         version: 0.7.1
@@ -140,10 +137,10 @@ importers:
       tailwind-merge:
         specifier: ^3.7.0
         version: 3.7.0
-      tailwindcss:
-        specifier: ^4
-        version: 4.3.5
     devDependencies:
+      '@tailwindcss/postcss':
+        specifier: ^4.3.5
+        version: 4.3.5
       '@types/node':
         specifier: ^22.0.0
         version: 22.20.5
@@ -159,6 +156,9 @@ importers:
       postcss:
         specifier: 8.5.32
         version: 8.5.32
+      tailwindcss:
+        specifier: ^4.3.5
+        version: 4.3.5
       typescript:
         specifier: ^5.9.0
         version: 5.9.3

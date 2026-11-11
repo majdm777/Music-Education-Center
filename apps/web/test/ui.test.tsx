@@ -71,6 +71,13 @@ describe('text controls', () => {
     expect(html).toContain('border-danger');
   });
 
+  it('treats a string aria-invalid as an error state', () => {
+    const html = renderToStaticMarkup(<Input aria-invalid="true" defaultValue="Layla" />);
+
+    expect(html).toContain('aria-invalid="true"');
+    expect(html).toContain('border-danger');
+  });
+
   it('renders a textarea and mirrors the invalid state', () => {
     const html = renderToStaticMarkup(<Textarea invalid defaultValue="Notes" />);
 
@@ -175,6 +182,13 @@ describe('surfaces', () => {
     expect(danger).toContain('role="alert"');
     expect(danger).toContain('bg-danger-soft');
     expect(info).toContain('role="status"');
+  });
+
+  it('does not inject an untranslated default title', () => {
+    const html = renderToStaticMarkup(<Alert tone="info">Message</Alert>);
+
+    expect(html).toContain('Message');
+    expect(html).not.toContain('Information');
   });
 
   it('renders a page header with actions', () => {

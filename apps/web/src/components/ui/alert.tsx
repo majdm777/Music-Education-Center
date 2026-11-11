@@ -4,33 +4,28 @@ import { cn } from '@/lib/utils';
 
 export type AlertTone = 'info' | 'success' | 'warning' | 'danger';
 
-const toneStyles: Record<
-  AlertTone,
-  { container: string; icon: LucideIcon; accent: string; label: string }
-> = {
+// No default title: visible copy must come from the caller so it can be
+// translated (the kit is used in both English and Arabic).
+const toneStyles: Record<AlertTone, { container: string; icon: LucideIcon; accent: string }> = {
   info: {
     container: 'border-info/30 bg-info-soft',
     icon: Info,
     accent: 'text-info',
-    label: 'Information',
   },
   success: {
     container: 'border-success/30 bg-success-soft',
     icon: CheckCircle2,
     accent: 'text-success',
-    label: 'Success',
   },
   warning: {
     container: 'border-warning/30 bg-warning-soft',
     icon: AlertTriangle,
     accent: 'text-warning',
-    label: 'Warning',
   },
   danger: {
     container: 'border-danger/30 bg-danger-soft',
     icon: AlertCircle,
     accent: 'text-danger',
-    label: 'Error',
   },
 };
 
@@ -51,7 +46,7 @@ export function Alert({ className, tone = 'info', title, role, children, ...prop
     >
       <Icon aria-hidden="true" className={cn('mt-0.5 size-4 shrink-0', style.accent)} />
       <div className="flex min-w-0 flex-col gap-1">
-        <p className={cn('font-semibold', style.accent)}>{title ?? style.label}</p>
+        {title ? <p className={cn('font-semibold', style.accent)}>{title}</p> : null}
         {children ? <div className="text-ink">{children}</div> : null}
       </div>
     </div>

@@ -17,7 +17,8 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
         'placeholder:text-ink-muted/70',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-surface',
         'disabled:cursor-not-allowed disabled:bg-surface-muted disabled:opacity-70',
-        (invalid || props['aria-invalid'] === true) && 'border-danger focus-visible:ring-danger',
+        (invalid || props['aria-invalid'] === true || props['aria-invalid'] === 'true') &&
+          'border-danger focus-visible:ring-danger',
         className,
       )}
     />
