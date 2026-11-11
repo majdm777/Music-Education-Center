@@ -19,5 +19,6 @@ export {
   TableHead,
   TableHeader,
   TableRow,
+  type TableProps,
 } from './table';
 export { Textarea, type TextareaProps } from './textarea';

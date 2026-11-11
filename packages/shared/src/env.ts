@@ -136,6 +136,9 @@ export const webEnvSchema = z
   .object({
     NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
     API_URL: httpUrl('API_URL').optional(),
+    // Opts a non-development environment into serving the /style-guide
+    // catalogue (for example a preview deployment). Off unless set to "true".
+    STYLE_GUIDE_ENABLED: z.enum(['true', 'false']).optional(),
   })
   .superRefine((env, ctx) => {
     if (env.NODE_ENV === 'production' && !env.API_URL) {

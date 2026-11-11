@@ -28,6 +28,7 @@ import {
   TableRow,
   Textarea,
 } from '@/components/ui';
+import { isStyleGuideEnabled } from '@/lib/style-guide';
 import { cn } from '@/lib/utils';
 
 // Keep the production 404 check at request time instead of failing static
@@ -109,8 +110,10 @@ function Swatch({ name, value, className }: { name: string; value: string; class
   );
 }
 
+const styleGuideEnabled = isStyleGuideEnabled(process.env);
+
 export default function StyleGuidePage() {
-  if (process.env.NODE_ENV === 'production') {
+  if (!styleGuideEnabled) {
     notFound();
   }
 
@@ -129,8 +132,9 @@ export default function StyleGuidePage() {
       />
 
       <Alert tone="warning" title="This route is not shipped">
-        The page returns a 404 when <code className="font-mono text-xs">NODE_ENV=production</code>.
-        Keep examples here current so screens assembled from the kit stay consistent.
+        The page is available in local development only. Any other environment returns a 404 unless{' '}
+        <code className="font-mono text-xs">STYLE_GUIDE_ENABLED=true</code> is set explicitly. Keep
+        examples here current so screens assembled from the kit stay consistent.
       </Alert>
 
       <Section
@@ -374,7 +378,7 @@ export default function StyleGuidePage() {
         title="Tables"
         description="Horizontal scrolling stays inside the card on small screens; alignment uses logical start and end."
       >
-        <Table>
+        <Table scrollLabel="Student balances">
           <TableCaption>Sample data only. No database records are shown.</TableCaption>
           <TableHeader>
             <TableRow>
