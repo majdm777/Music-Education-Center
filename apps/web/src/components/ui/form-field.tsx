@@ -37,7 +37,11 @@ export function FormField({
 }: FormFieldProps) {
   const hintId = hint ? `${id}-hint` : undefined;
   const errorId = error ? `${id}-error` : undefined;
-  const describedBy = [hintId, errorId].filter(Boolean).join(' ') || undefined;
+  const generatedDescriptions = [hintId, errorId].filter(Boolean).join(' ');
+  // Keep any description the caller already attached to the control.
+  const describedBy =
+    [children.props['aria-describedby'], generatedDescriptions].filter(Boolean).join(' ') ||
+    undefined;
 
   const control = cloneElement(children, {
     id,

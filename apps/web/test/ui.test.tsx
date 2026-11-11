@@ -98,6 +98,16 @@ describe('text controls', () => {
     expect(html).toContain('aria-hidden="true"');
   });
 
+  it('applies an explicit direction to both the wrapper and the control', () => {
+    const html = renderToStaticMarkup(
+      <Select dir="rtl" aria-label="Format" defaultValue="group">
+        <option value="group">Group</option>
+      </Select>,
+    );
+
+    expect(html.match(/dir="rtl"/g)).toHaveLength(2);
+  });
+
   it('renders a native checkbox and a required label', () => {
     const html = renderToStaticMarkup(
       <>
@@ -142,6 +152,26 @@ describe('FormField', () => {
 
     expect(html).not.toContain('aria-describedby');
     expect(html).not.toContain('aria-invalid');
+  });
+
+  it('merges an existing description with the generated hint and error ids', () => {
+    const html = renderToStaticMarkup(
+      <FormField id="notes" label="Notes" hint="Optional" error="Too long">
+        <Textarea name="notes" aria-describedby="external-help" />
+      </FormField>,
+    );
+
+    expect(html).toContain('aria-describedby="external-help notes-hint notes-error"');
+  });
+
+  it('keeps an existing description when the field adds none', () => {
+    const html = renderToStaticMarkup(
+      <FormField id="name" label="Name">
+        <Input name="name" aria-describedby="external-help" />
+      </FormField>,
+    );
+
+    expect(html).toContain('aria-describedby="external-help"');
   });
 });
 

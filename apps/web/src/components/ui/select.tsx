@@ -8,10 +8,11 @@ export interface SelectProps extends SelectHTMLAttributes<HTMLSelectElement> {
 }
 
 export const Select = forwardRef<HTMLSelectElement, SelectProps>(
-  ({ className, invalid, children, ...props }, ref) => (
-    <div className="relative w-full">
+  ({ className, invalid, children, dir, ...props }, ref) => (
+    <div className="relative w-full" dir={dir}>
       <select
         ref={ref}
+        dir={dir}
         {...props}
         aria-invalid={invalid || props['aria-invalid'] || undefined}
         className={cn(
