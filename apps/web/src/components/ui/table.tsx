@@ -17,9 +17,8 @@ export interface TableProps extends TableHTMLAttributes<HTMLTableElement> {
 
 export function Table({ className, scrollLabel, ...props }: TableProps) {
   return (
-    // Focusable so a keyboard user can scroll a table wider than the viewport.
-    // Without a name the region is not exposed as a landmark, which keeps
-    // unnamed tables from cluttering the landmark list.
+    // Focusable so a keyboard user can scroll a table wider than the viewport;
+    // the required label keeps that tab stop identifiable.
     <div
       role="region"
       aria-label={scrollLabel}
