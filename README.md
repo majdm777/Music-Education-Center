@@ -14,7 +14,7 @@ Environment scaffold is in place (4-8 Nov 2026): pnpm workspace, Next.js web app
 
 ## Stack
 
-TypeScript · Next.js (App Router) · NestJS · Prisma 6 · PostgreSQL 17 (Docker locally; Neon planned for staging and production) · pnpm workspaces · next-intl, Tailwind CSS, shadcn/ui (design phase) · Vitest · Playwright (planned)
+TypeScript · Next.js (App Router) · NestJS · Prisma 6 · PostgreSQL 17 (Docker locally; Neon planned for staging and production) · pnpm workspaces · next-intl, Tailwind CSS v4, CVA-based UI primitives, IBM Plex Sans Arabic, lucide-react · Vitest · Playwright (planned)
 
 ## Prerequisites
 
@@ -43,6 +43,7 @@ pnpm dev            # web on :3000, API on :3001
 Then:
 
 - Web: <http://localhost:3000>
+- UI kit style guide: <http://localhost:3000/style-guide> (development only; returns 404 in production)
 - API health: <http://localhost:3001/api/health>
 - The web page fetches `/api/health` through the Next.js rewrite, so a green card proves the browser-to-web-to-API path.
 
@@ -50,24 +51,24 @@ The seed creates the admin only if it is missing. Re-running it never resets the
 
 ## Scripts
 
-| Script                              | What it does                                               |
-| ----------------------------------- | ---------------------------------------------------------- |
-| `pnpm dev`                          | Builds `@mec/shared`, then runs web and API in watch mode  |
-| `pnpm build`                        | Builds shared, generates Prisma Client, builds API and web |
-| `pnpm lint`                         | ESLint over the workspace                                  |
-| `pnpm typecheck`                    | Generates Prisma Client, then type-checks every package    |
-| `pnpm test`                         | Unit tests (shared; API tests run here once they exist)    |
-| `pnpm test:coverage`                | Unit tests with lcov output for SonarQube Cloud            |
-| `pnpm test:integration`             | Resets `mec_test` and runs the API database tests          |
-| `pnpm format` / `pnpm format:check` | Prettier                                                   |
-| `pnpm db:up` / `pnpm db:down`       | Local PostgreSQL lifecycle                                 |
-| `pnpm db:migrate`                   | Create and apply a migration while changing the schema     |
-| `pnpm db:deploy`                    | Apply committed migrations (first run, staging, prod, CI)  |
-| `pnpm db:seed`                      | Seed local data                                            |
-| `pnpm db:reset`                     | Drop and recreate the local database, then seed            |
-| `pnpm db:verify`                    | Assert the indexes, CHECKs, foreign keys and sequence      |
-| `pnpm db:drift`                     | Compare the live database with `prisma/schema.prisma`      |
-| `pnpm db:studio`                    | Prisma Studio                                              |
+| Script                              | What it does                                                           |
+| ----------------------------------- | ---------------------------------------------------------------------- |
+| `pnpm dev`                          | Builds `@mec/shared`, then runs web and API in watch mode              |
+| `pnpm build`                        | Builds shared, generates Prisma Client, builds API and web             |
+| `pnpm lint`                         | ESLint over the workspace                                              |
+| `pnpm typecheck`                    | Generates Prisma Client, then type-checks every package                |
+| `pnpm test`                         | Unit tests (shared and web UI kit; API tests run here once they exist) |
+| `pnpm test:coverage`                | Unit tests with lcov output for SonarQube Cloud                        |
+| `pnpm test:integration`             | Resets `mec_test` and runs the API database tests                      |
+| `pnpm format` / `pnpm format:check` | Prettier                                                               |
+| `pnpm db:up` / `pnpm db:down`       | Local PostgreSQL lifecycle                                             |
+| `pnpm db:migrate`                   | Create and apply a migration while changing the schema                 |
+| `pnpm db:deploy`                    | Apply committed migrations (first run, staging, prod, CI)              |
+| `pnpm db:seed`                      | Seed local data                                                        |
+| `pnpm db:reset`                     | Drop and recreate the local database, then seed                        |
+| `pnpm db:verify`                    | Assert the indexes, CHECKs, foreign keys and sequence                  |
+| `pnpm db:drift`                     | Compare the live database with `prisma/schema.prisma`                  |
+| `pnpm db:studio`                    | Prisma Studio                                                          |
 
 ## Layout
 
@@ -98,7 +99,8 @@ Docs/         Product, plan, architecture and schema documents
 ## Testing
 
 - `pnpm test` runs the unit tests.
-- `pnpm test:coverage` runs the same tests and writes lcov reports for SonarQube Cloud. Only `packages/shared` reports coverage today; `apps/api` is still analysed for bugs, smells, security, and duplication.
+- `pnpm test:coverage` runs the same tests and writes lcov reports for SonarQube Cloud. `packages/shared` and the web UI primitives report coverage; `apps/api` and web route wiring are still analysed for bugs, smells, security, and duplication.
+- Web component tests render to static markup, so they need no browser or jsdom. The dev-only `/style-guide` route exercises the same primitives visually in both LTR and RTL.
 - `pnpm test:integration` creates or resets a separate `mec_test` database, applies the migrations, and checks every database invariant: CHECKs, partial unique indexes, the composite subject FK, `citext`, RESTRICT deletes, and financial consistency.
 - The integration runner refuses any database whose name does not end in `_test`, so it cannot wipe development or production data.
 - `TEST_DATABASE_URL` is optional locally; when omitted, it is derived from `DATABASE_URL` by appending `_test`.
