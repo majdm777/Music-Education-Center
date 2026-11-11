@@ -45,7 +45,7 @@ Then:
 - Web: <http://localhost:3000>
 - UI kit style guide: <http://localhost:3000/style-guide> (development only; other environments return 404 unless `STYLE_GUIDE_ENABLED=true`)
 - API health: <http://localhost:3001/api/health>
-- The web page fetches `/api/health` through the Next.js rewrite, so a green card proves the browser-to-web-to-API path.
+- The style guide includes a health card that fetches `/api/health` through the Next.js rewrite, so a green result proves the browser-to-web-to-API path.
 
 IBM Plex Sans Arabic is vendored in `apps/web/src/fonts` under the SIL Open Font License (served at `/fonts/OFL.txt`), so builds never fetch fonts from Google.
 
