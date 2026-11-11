@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation';
 import { CalendarDays, Download, Plus, Search, Users } from 'lucide-react';
 import type { ReactNode } from 'react';
+import { HealthCard } from '@/components/health-card';
 import {
   Alert,
   Badge,
@@ -401,6 +402,14 @@ export default function StyleGuidePage() {
             ))}
           </TableBody>
         </Table>
+      </Section>
+
+      <Section
+        id="health"
+        title="Health check"
+        description="The card calls /api/health through the Next.js rewrite. A green result proves the browser-to-web-to-API path."
+      >
+        <HealthCard />
       </Section>
 
       <Section

@@ -41,8 +41,11 @@ export function HealthCard() {
 
   if (error) {
     return (
-      <div className="status status-error">
-        <strong>API unreachable</strong>
+      <div
+        role="alert"
+        className="flex flex-col gap-1 rounded-lg border border-danger/30 bg-danger-soft px-4 py-3 text-sm text-ink-muted"
+      >
+        <strong className="text-base font-semibold text-danger">API unreachable</strong>
         <span>{error}. Is the API running on port 3001?</span>
       </div>
     );
@@ -50,15 +53,21 @@ export function HealthCard() {
 
   if (!health) {
     return (
-      <div className="status">
-        <strong>Checking API…</strong>
+      <div
+        role="status"
+        className="flex flex-col gap-1 rounded-lg border border-line bg-canvas px-4 py-3 text-sm text-ink-muted"
+      >
+        <strong className="text-base font-semibold text-ink">Checking API…</strong>
       </div>
     );
   }
 
   return (
-    <div className="status status-ok">
-      <strong>API {health.status}</strong>
+    <div
+      role="status"
+      className="flex flex-col gap-1 rounded-lg border border-brand/30 bg-brand-soft px-4 py-3 text-sm text-brand-ink"
+    >
+      <strong className="text-base font-semibold text-brand-ink">API {health.status}</strong>
       <span>
         Database {health.database} · {new Date(health.timestamp).toLocaleTimeString()}
       </span>

@@ -40,24 +40,6 @@
   --shadow-card: 0 24px 60px -30px rgb(15 23 42 / 0.35);
 }
 
-/*
- * Legacy aliases keep the first-run page and health card working while the
- * design system is adopted incrementally. New code should use the Tailwind
- * token utilities (bg-surface, text-ink-muted, border-line, ...).
- */
-:root {
-  color-scheme: light;
-  --ink: var(--color-ink);
-  --muted: var(--color-ink-muted);
-  --line: var(--color-line);
-  --surface: var(--color-surface);
-  --page: var(--color-canvas);
-  --brand: var(--color-brand);
-  --brand-soft: var(--color-brand-soft);
-  --danger: var(--color-danger);
-  --danger-soft: var(--color-danger-soft);
-}
-
 @layer base {
   *,
   ::before,
@@ -72,7 +54,14 @@
   }
 
   html {
+    color-scheme: light;
     -webkit-text-size-adjust: 100%;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    html {
+      scroll-behavior: smooth;
+    }
   }
 
   body {
@@ -108,90 +97,5 @@
   :focus-visible {
     outline: 2px solid var(--color-brand);
     outline-offset: 2px;
-  }
-}
-
-/* Existing first-run page. Kept in the components layer so Tailwind utilities
- * can override these styles as the landing page moves to the UI kit. */
-@layer components {
-  .page {
-    display: grid;
-    place-items: center;
-    min-height: 100vh;
-    padding: 2rem 1rem;
-  }
-
-  .card {
-    width: min(640px, 100%);
-    padding: 2.5rem;
-    border: 1px solid var(--line);
-    border-radius: 20px;
-    background: var(--surface);
-    box-shadow: 0 24px 60px -30px rgba(15, 23, 42, 0.35);
-  }
-
-  .eyebrow {
-    margin: 0 0 0.5rem;
-    color: var(--brand);
-    font-size: 0.75rem;
-    font-weight: 700;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-  }
-
-  .lede {
-    margin: 1rem 0 1.75rem;
-    color: var(--muted);
-  }
-
-  .status {
-    display: flex;
-    flex-direction: column;
-    gap: 0.25rem;
-    padding: 1rem 1.25rem;
-    border: 1px solid var(--line);
-    border-radius: 12px;
-    background: var(--page);
-    color: var(--muted);
-    font-size: 0.9rem;
-  }
-
-  .status strong {
-    color: var(--ink);
-    font-size: 1rem;
-  }
-
-  .status-ok {
-    border-color: #99f6e4;
-    background: var(--brand-soft);
-  }
-
-  .status-error {
-    border-color: #fecaca;
-    background: var(--danger-soft);
-  }
-
-  .status-error strong {
-    color: var(--danger);
-  }
-
-  .links {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 1.25rem;
-    margin: 1.75rem 0 0;
-    padding: 0;
-    list-style: none;
-    font-size: 0.9rem;
-  }
-
-  .links a {
-    color: var(--brand);
-    font-weight: 600;
-    text-decoration: none;
-  }
-
-  .links a:hover {
-    text-decoration: underline;
   }
 }

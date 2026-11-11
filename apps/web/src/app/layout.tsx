@@ -17,7 +17,7 @@ const ibmPlexSansArabic = localFont({
 
 export const metadata: Metadata = {
   title: 'Music & Education Center',
-  description: 'Center management system',
+  description: 'Music lessons and academic support under one roof, from kindergarten to Grade 12.',
 };
 
 export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
