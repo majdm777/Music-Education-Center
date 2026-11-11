@@ -32,6 +32,7 @@ import {
   buttonVariants,
 } from '@/components/ui';
 import { isControlInvalid } from '@/lib/form';
+import { isStyleGuideEnabled } from '@/lib/style-guide';
 import { cn } from '@/lib/utils';
 
 describe('cn', () => {
@@ -40,10 +41,26 @@ describe('cn', () => {
   });
 });
 
+describe('isStyleGuideEnabled', () => {
+  it('always serves the catalogue in local development', () => {
+    expect(isStyleGuideEnabled({ NODE_ENV: 'development' })).toBe(true);
+  });
+
+  it('requires an explicit opt-in everywhere else', () => {
+    expect(isStyleGuideEnabled({ NODE_ENV: 'production' })).toBe(false);
+    expect(isStyleGuideEnabled({ NODE_ENV: 'test' })).toBe(false);
+    expect(isStyleGuideEnabled({ NODE_ENV: 'production', STYLE_GUIDE_ENABLED: 'false' })).toBe(
+      false,
+    );
+    expect(isStyleGuideEnabled({ NODE_ENV: 'production', STYLE_GUIDE_ENABLED: 'true' })).toBe(true);
+  });
+});
+
 describe('isControlInvalid', () => {
   it('treats grammar, spelling and true values as invalid', () => {
     expect(isControlInvalid(undefined, 'grammar')).toBe(true);
     expect(isControlInvalid(undefined, 'spelling')).toBe(true);
+    expect(isControlInvalid(undefined, true)).toBe(true);
     expect(isControlInvalid(false, 'true')).toBe(true);
     expect(isControlInvalid(true, undefined)).toBe(true);
   });
@@ -101,6 +118,7 @@ describe('text controls', () => {
 
     expect(grammar).toContain('aria-invalid="grammar"');
     expect(grammar).toContain('border-danger');
+    expect(spelling).toContain('aria-invalid="spelling"');
     expect(spelling).toContain('border-danger');
   });
 
@@ -165,8 +183,7 @@ describe('text controls', () => {
     expect(html).toContain('type="checkbox"');
     expect(html).toContain('accent-brand');
     expect(html).toContain('for="reminder"');
-    expect(html).toContain('*');
-    expect(html).toContain('aria-hidden="true"');
+    expect(html).toMatch(/<span [^>]*aria-hidden="true"[^>]*>\*<\/span>/);
   });
 });
 
@@ -309,7 +326,7 @@ describe('surfaces', () => {
 describe('Table', () => {
   it('renders table primitives with logical alignment and a caption', () => {
     const html = renderToStaticMarkup(
-      <Table>
+      <Table scrollLabel="Sample data">
         <TableCaption>Sample data</TableCaption>
         <TableHeader>
           <TableRow>
@@ -337,7 +354,7 @@ describe('Table', () => {
     expect(html).toContain('Total');
   });
 
-  it('makes the scroll container focusable and names it when asked', () => {
+  it('makes the scroll container a named, focusable region', () => {
     const html = renderToStaticMarkup(
       <Table scrollLabel="November payments">
         <TableBody>
@@ -351,12 +368,5 @@ describe('Table', () => {
     expect(html).toContain('role="region"');
     expect(html).toContain('tabindex="0"');
     expect(html).toContain('aria-label="November payments"');
-  });
-
-  it('keeps an unnamed table focusable without an accessible name', () => {
-    const html = renderToStaticMarkup(<Table />);
-
-    expect(html).toContain('tabindex="0"');
-    expect(html).not.toContain('aria-label');
   });
 });

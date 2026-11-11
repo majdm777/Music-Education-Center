@@ -28,6 +28,7 @@ import {
   TableRow,
   Textarea,
 } from '@/components/ui';
+import { isStyleGuideEnabled } from '@/lib/style-guide';
 import { cn } from '@/lib/utils';
 
 // Keep the production 404 check at request time instead of failing static
@@ -109,11 +110,7 @@ function Swatch({ name, value, className }: { name: string; value: string; class
   );
 }
 
-// Fail closed: local development always has the catalogue, and any other
-// environment must opt in explicitly (for example a preview deployment that
-// design review needs). A production build never serves it by accident.
-const styleGuideEnabled =
-  process.env.NODE_ENV === 'development' || process.env.STYLE_GUIDE_ENABLED === 'true';
+const styleGuideEnabled = isStyleGuideEnabled(process.env);
 
 export default function StyleGuidePage() {
   if (!styleGuideEnabled) {

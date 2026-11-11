@@ -9,10 +9,10 @@ import { cn } from '@/lib/utils';
 export interface TableProps extends TableHTMLAttributes<HTMLTableElement> {
   /**
    * Accessible name for the scroll region, for example "November payments".
-   * Name every table that can overflow so the focusable container is not an
-   * anonymous tab stop.
+   * Required: the container is a focusable `region`, and a region without a
+   * name is an anonymous tab stop that screen-reader users cannot identify.
    */
-  scrollLabel?: string;
+  scrollLabel: string;
 }
 
 export function Table({ className, scrollLabel, ...props }: TableProps) {

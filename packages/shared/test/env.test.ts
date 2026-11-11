@@ -149,18 +149,29 @@ describe('webEnvSchema', () => {
     expect(result.success).toBe(false);
   });
 
-  it('accepts the style guide opt-in and rejects any other value', () => {
+  it('accepts the style guide flag when true, false or absent', () => {
     const enabled = webEnvSchema.safeParse({
       NODE_ENV: 'development',
       STYLE_GUIDE_ENABLED: 'true',
     });
-    const misspelled = webEnvSchema.safeParse({
+    const disabled = webEnvSchema.safeParse({
+      NODE_ENV: 'development',
+      STYLE_GUIDE_ENABLED: 'false',
+    });
+    const absent = webEnvSchema.safeParse({ NODE_ENV: 'development' });
+
+    expect(enabled.success).toBe(true);
+    expect(disabled.success).toBe(true);
+    expect(absent.success).toBe(true);
+  });
+
+  it('rejects a misspelled style guide flag', () => {
+    const result = webEnvSchema.safeParse({
       NODE_ENV: 'development',
       STYLE_GUIDE_ENABLED: 'yes',
     });
 
-    expect(enabled.success).toBe(true);
-    expect(misspelled.success).toBe(false);
+    expect(result.success).toBe(false);
   });
 });
 
