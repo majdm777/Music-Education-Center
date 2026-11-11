@@ -117,7 +117,7 @@ const glanceItems = [
   },
   {
     label: 'Open',
-    value: 'Monday to Saturday, 9:00 to 21:00',
+    value: 'Monday to Saturday, 9:00 – 21:00',
     icon: Clock,
   },
 ];
@@ -417,7 +417,9 @@ export default function HomePage() {
             </a>
           </nav>
 
-          <p className="text-xs text-ink-muted">© 2026 Music &amp; Education Center</p>
+          <p className="text-xs text-ink-muted">
+            © {new Date().getFullYear()} Music &amp; Education Center
+          </p>
         </div>
       </footer>
     </div>
